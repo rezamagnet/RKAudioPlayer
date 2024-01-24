@@ -16,7 +16,7 @@ public struct Track {
     var streamURL: String?
     var favourited: Bool?
     
-    public init(image: String, title: String, subtitle: String, recording: String, streamURL: String, favourited: Bool) {
+    public init(image: String?, title: String?, subtitle: String?, recording: String?, streamURL: String?, favourited: Bool?) {
         self.image = image
         self.title = title
         self.subtitle = subtitle

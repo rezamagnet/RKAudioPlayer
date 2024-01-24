@@ -9,9 +9,11 @@ import SwiftUI
 import AVFoundation
 import MediaPlayer
 import ActivityIndicatorView
+import Kingfisher
 
 public struct SereneAudioStreamPlayer: View {
     
+    @Environment(\.dismiss) var dismiss
     @Environment(\.presentationMode) var presentationMode
     
     public var track: Track
@@ -36,298 +38,269 @@ public struct SereneAudioStreamPlayer: View {
     }
     
     public var body: some View {
-        ZStack {
-            
-            // Background Image of current track
-            Image(track.image ?? "")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: UIScreen.main.bounds.width)
-                .edgesIgnoringSafeArea(.vertical)
-            
-            // Gradient Overlay (Clear to Black)
-            VStack {
-                Spacer()
-                Rectangle()
-                    .foregroundColor(.clear)
-                    .background(LinearGradient(gradient: Gradient(colors: [.clear, .black]), startPoint: .top, endPoint: .bottom))
-                    .edgesIgnoringSafeArea(.bottom)
-                    .frame(height: UIScreen.main.bounds.height / 1.5)
-            }
-            
-            VStack {
-                Spacer()
+        NavigationStack {
+            ZStack {
+                // Background Image of current track
+                KFImage(URL(string: track.image ?? ""))
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: UIScreen.main.bounds.width)
+                    .edgesIgnoringSafeArea(.vertical)
                 
-                VStack(alignment: .center) {
-                    Text(track.title ?? "No track title")
-                        .foregroundColor(.white)
-                        .font(.custom("Quicksand SemiBold", size: 18))
-                        .padding(.bottom, 10)
-                        .padding(.horizontal, 30)
-                        .multilineTextAlignment(.center)
-                    
-                    Text(track.subtitle ?? "No track subtitle")
-                        .foregroundColor(Color.white.opacity(0.6))
-                        .font(.custom("Quicksand SemiBold", size: 16))
-                        .padding(.bottom, 30)
+                // Gradient Overlay (Clear to Black)
+                VStack {
+                    Spacer()
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .background(LinearGradient(gradient: Gradient(colors: [.clear, .black]), startPoint: .top, endPoint: .bottom))
+                        .edgesIgnoringSafeArea(.bottom)
+                        .frame(height: UIScreen.main.bounds.height / 1.5)
                 }
                 
-                ZStack(alignment: .leading) {
-                    
-                    Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
-                    
-                    Capsule().fill(Color.white).frame(width: self.width, height: 5)
-                        .gesture(DragGesture()
-                            .onChanged({ (value) in
-                                
-                                let x = value.location.x
-                                
-                                self.width = x
-                                
-                            }).onEnded({ (value) in
-                                
-                                let x = value.location.x
-                                
-                                let screen = UIScreen.main.bounds.width - 30
-                                
-                                let percent = x / screen
-                                
-                                let seek = Double(percent) * self.player.currentItem!.asset.duration.seconds
-                                
-                                self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
-                                
-                            }))
-                }
-                .padding(.horizontal, 30)
-                
-                HStack {
-                    Text("Streaming Live")
-                        .foregroundColor(Color.white.opacity(0.6))
-                        .font(.custom("Quicksand Regular", size: 14))
-                    
-                }
-                .padding(.horizontal, 30)
-                .padding(.top, 10)
-                .padding(.bottom, 30)
-                
-                HStack {
-                    
+                VStack {
                     Spacer()
                     
-                    Button(action: {
-                        self.player.pause()
-                        self.player.seek(to: .zero)
-                        MPRemoteCommandCenter.shared().playCommand.removeTarget(nil)
-                        MPRemoteCommandCenter.shared().pauseCommand.removeTarget(nil)
-                        self.presentationMode.wrappedValue.dismiss()
-                    }) {
-                        VStack(alignment: .center) {
-                            Image(systemName: "stop.fill")
-                                .foregroundColor(.white)
-                                .font(.title)
-                                .padding()
-                            Text("Stop")
-                                .foregroundColor(Color.white)
-                                .font(.custom("Quicksand Regular", size: 14))
-                        }
-                    }
-                    
-                    
-                }
-                .padding(.horizontal, 30)
-                .padding(.bottom, 30)
-                
-                HStack {
-                    
-                    Button(action: {
-                        
-                        self.trackFavourited.toggle()
-                        
-                    }) {
-                        
-                        if track.favourited == true {
-                            Image(systemName: "heart.fill")
-                                .foregroundColor(.red)
-                                .font(.headline)
-                                .padding()
-                        } else {
-                            Image(systemName: "heart")
-                                .foregroundColor(.white)
-                                .font(.headline)
-                                .padding()
-                        }
-                        
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        // self.player.currentTime -= 15
-                    }) {
-                        Image(systemName: "gobackward.15")
+                    VStack(alignment: .leading) {
+                        Text(track.title ?? "No track title")
                             .foregroundColor(.white)
-                            .opacity(0.5)
-                            .font(.headline)
-                            .padding()
+                            .font(.custom("Quicksand SemiBold", size: 18))
+                            .padding(.bottom, 8)
+                            .multilineTextAlignment(.center)
+                        
+                        Text(track.subtitle ?? "No track subtitle")
+                            .foregroundColor(.white)
+                            .font(.custom("Quicksand SemiBold", size: 16))
+                            .padding(.bottom, 30)
                     }
-                    .disabled(true)
                     
-                    Spacer()
-                    
-                    
-                    Button(action: {
-                        if InternetConnectionManager.isConnectedToNetwork() {
-                            print("Internet connection OK")
-                            
-                            
-                            if self.player.isPlaying {
-                                
-                                self.player.pause()
-                                self.playing = false
-                            } else {
-                                
-                                if self.finish {
+                    ZStack(alignment: .leading) {
+                        
+                        Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
+                        
+                        Capsule().fill(Color.white).frame(width: self.width, height: 5)
+                            .gesture(DragGesture()
+                                .onChanged({ (value) in
                                     
-                                    self.player.seek(to: .zero)
-                                    self.width = 0
-                                    self.finish = false
+                                    let x = value.location.x
+                                    
+                                    self.width = x
+                                    
+                                }).onEnded({ (value) in
+                                    
+                                    let x = value.location.x
+                                    
+                                    let screen = UIScreen.main.bounds.width - 30
+                                    
+                                    let percent = x / screen
+                                    
+                                    let seek = Double(percent) * self.player.currentItem!.asset.duration.seconds
+                                    
+                                    self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
+                                    
+                                }))
+                    }
+                    .padding(.bottom, 20)
+                    .padding(.horizontal)
+                    
+                    HStack {
+                        
+                        Button(action: {
+                            
+                            
+                            
+                        }) {
+                            Image(systemName: "airplayvideo")
+                                .foregroundColor(.white)
+                                .font(.headline)
+                                .padding()
+                            
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            
+                            var timeBackward = self.player.currentTime().seconds
+                            timeBackward -= 5
+                            self.player.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player.currentTime().timescale))
+                        }) {
+                            Image(systemName: "gobackward.15")
+                                .foregroundColor(.white)
+                                .font(.headline)
+                                .padding()
+                        }
+                        
+                        Spacer()
+                        
+                        
+                        Button(action: {
+                            if InternetConnectionManager.isConnectedToNetwork() {
+                                print("Internet connection OK")
+                                
+                                
+                                if self.player.isPlaying {
+                                    
+                                    self.player.pause()
+                                    self.playing = false
+                                } else {
+                                    
+                                    if self.finish {
+                                        
+                                        self.player.seek(to: .zero)
+                                        self.width = 0
+                                        self.finish = false
+                                        
+                                    }
+                                    
+                                    self.player.play()
+                                    self.playing = true
                                     
                                 }
+                            } else {
+                                print("Internet connection FAILED")
                                 
-                                self.player.play()
-                                self.playing = true
+                                self.showingAlert = true
                                 
                             }
+                        }) {
+                            
+                            Image(systemName: self.playing && !self.finish ? "pause.fill" : "play.fill")
+                                .foregroundColor(.white)
+                                .font(.largeTitle)
+                                .frame(width: 80, height: 80)
+                                .background(.white.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            
+                            self.trackFavourited.toggle()
+                            
+                        }) {
+                            
+                            if track.favourited == true {
+                                Image(systemName: "heart.fill")
+                                    .foregroundColor(.red)
+                                    .font(.headline)
+                                    .padding()
+                            } else {
+                                Image(systemName: "heart")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                                    .padding()
+                            }
+                            
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            let urlString = self.track.streamURL ?? ""
+                            
+                            let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+                            
+                            self.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
+                                self.downloaded = true
+                                self.disableDownload = true
+                            }
+                        }) {
+                            
+                            if isDownloading {
+                                ActivityIndicatorView(isVisible: $isDownloading, type: .default)
+                                    .frame(width: 30, height: 30)
+                                    .foregroundColor(.white)
+                                    .padding()
+                            } else {
+                                if downloaded {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.white)
+                                        .font(.headline)
+                                        .padding()
+                                } else {
+                                    
+                                    Image(systemName: "icloud.and.arrow.down.fill")
+                                        .foregroundColor(.white)
+                                        .font(.headline)
+                                        .padding()
+                                }
+                            }
+                            
+                            
+                        }
+                        .disabled(disableDownload)
+                        
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 30)
+                    .onAppear {
+                        
+                        if InternetConnectionManager.isConnectedToNetwork() {
+                            print("Internet connection OK")
                         } else {
                             print("Internet connection FAILED")
                             
                             self.showingAlert = true
                             
                         }
-                    }) {
                         
-                        Image(systemName: self.playing && !self.finish ? "pause.fill" : "play.fill")
-                            .foregroundColor(.white)
-                            .font(.largeTitle)
-                            .padding()
-                        
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        var timeForward = self.player.currentTime().seconds
-                        timeForward += 5.0
-                        if (timeForward > (self.player.currentItem?.asset.duration.seconds)!) {
-                            self.player.seek(to: CMTime(seconds: timeForward, preferredTimescale: self.player.currentTime().timescale))
-                        } else {
-                            self.player.seek(to: (self.player.currentItem?.asset.duration)!)
-                        }
-                    }) {
-                        Image(systemName: "goforward.15")
-                            .foregroundColor(.white)
-                            .opacity(0.5)
-                            .font(.headline)
-                            .padding()
-                    }
-                    .disabled(true)
-                    
-                    Spacer()
-                    
-                    Button(action: {
                         let urlString = self.track.streamURL ?? ""
                         
-                        let encodedSoundString = urlString.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+                        let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
                         
-                        self.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
-                            self.downloaded = true
-                            self.disableDownload = true
-                        }
-                    }) {
+                        let url = URL(string: encodedSoundString!)
                         
-                        if isDownloading {
-                            ActivityIndicatorView(isVisible: $isDownloading, type: .default)
-                                .frame(width: 30, height: 30)
-                                .foregroundColor(.white)
-                                .padding()
-                        } else {
-                            if downloaded {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.white)
-                                    .font(.headline)
-                                    .padding()
-                            } else {
+                        let playerItem = AVPlayerItem(url: url!)
+                        
+                        self.player = AVPlayer.init(playerItem: playerItem)
+                        
+                        self.player.automaticallyWaitsToMinimizeStalling = false
+                        
+                        
+                        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (_) in
+                            
+                            if self.player.isPlaying{
                                 
-                                Image(systemName: "icloud.and.arrow.down.fill")
-                                    .foregroundColor(.white)
-                                    .font(.headline)
-                                    .padding()
+                                let screen = UIScreen.main.bounds.width - 30
+                                
+                                let value = self.player.currentItem!.currentTime().seconds / self.player.currentItem!.asset.duration.seconds
+                                
+                                self.width = screen * CGFloat(value)
                             }
                         }
                         
-                        
-                    }
-                    .disabled(disableDownload)
-                    
-                }
-                .padding(.horizontal, 30)
-                .padding(.bottom, 30)
-                .onAppear {
-                    
-                    
-                    if InternetConnectionManager.isConnectedToNetwork() {
-                        print("Internet connection OK")
-                    } else {
-                        print("Internet connection FAILED")
-                        
-                        self.showingAlert = true
-                        
-                    }
-                    
-                    let urlString = self.track.streamURL ?? ""
-                    
-                    let encodedSoundString = urlString.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-                    
-                    let url = URL(string: encodedSoundString!)
-                    
-                    let playerItem = AVPlayerItem(url: url!)
-                    
-                    self.player = AVPlayer.init(playerItem: playerItem)
-                    
-                    self.player.automaticallyWaitsToMinimizeStalling = false
-                    
-                    
-                    Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (_) in
-                        
-                        if self.player.isPlaying{
+                        NotificationCenter.default.addObserver(forName: NSNotification.Name("Finish"), object: nil, queue: .main) { (_) in
                             
-                            let screen = UIScreen.main.bounds.width - 30
-                            
-                            let value = self.player.currentItem!.currentTime().seconds / self.player.currentItem!.asset.duration.seconds
-                            
-                            self.width = screen * CGFloat(value)
+                            self.finish = true
                         }
-                    }
-                    
-                    NotificationCenter.default.addObserver(forName: NSNotification.Name("Finish"), object: nil, queue: .main) { (_) in
                         
-                        self.finish = true
+                        self.setupRemoteTransportControls()
+                        self.setupNowPlaying(track: self.track)
+                        
+                    }
+                    .alert(isPresented: $showingAlert) {
+                        Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
+                        
                     }
                     
-                    self.setupRemoteTransportControls()
-                    self.setupNowPlaying(track: self.track)
-                    
                 }
-                .alert(isPresented: $showingAlert) {
-                    Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
-                    
-                }
-                
             }
-            
+            .toolbar(content: {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "multiply")
+                            .foregroundColor(.white)
+                            .frame(width: 30, height: 30)
+                            .background(.white.opacity(0.3))
+                            .clipShape(Circle())
+                    }
+
+                }
+            })
         }
-        .navigationBarTitle("")
-        .navigationBarHidden(true)
     }
     
     func setupRemoteTransportControls() {

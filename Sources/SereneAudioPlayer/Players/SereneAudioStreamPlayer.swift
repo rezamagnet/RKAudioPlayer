@@ -152,7 +152,7 @@ public struct SereneAudioStreamPlayer: View {
                                         
                                     }
                                     
-                                    self.player.play()
+                                    self.player.playImmediately(atRate: 1)
                                     self.playing = true
                                     
                                 }
@@ -253,7 +253,7 @@ public struct SereneAudioStreamPlayer: View {
                         
                         let playerItem = AVPlayerItem(url: url!)
                         
-                        self.player = AVPlayer.init(playerItem: playerItem)
+                        self.player = AVPlayer(playerItem: playerItem)
                         
                         self.player.automaticallyWaitsToMinimizeStalling = false
                         
@@ -289,6 +289,7 @@ public struct SereneAudioStreamPlayer: View {
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        player.pause()
                         dismiss()
                     } label: {
                         Image(systemName: "multiply")
@@ -297,7 +298,7 @@ public struct SereneAudioStreamPlayer: View {
                             .background(.white.opacity(0.3))
                             .clipShape(Circle())
                     }
-
+                    
                 }
             })
         }

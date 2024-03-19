@@ -15,15 +15,13 @@ public struct Track {
     var recording: String?
     var streamURL: String?
     var favourited: Bool?
-    var isLive: Bool
     
-    public init(image: String?, title: String?, subtitle: String?, recording: String?, streamURL: String?, favourited: Bool?, isLive: Bool = false) {
+    public init(image: String?, title: String?, subtitle: String?, recording: String?, streamURL: String?, favourited: Bool?) {
         self.image = image
         self.title = title
         self.subtitle = subtitle
         self.recording = recording
         self.streamURL = streamURL
         self.favourited = favourited
-        self.isLive = isLive
     }
 }

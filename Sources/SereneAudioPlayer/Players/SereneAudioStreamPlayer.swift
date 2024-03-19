@@ -16,8 +16,11 @@ public struct SereneAudioStreamPlayer: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.presentationMode) var presentationMode
     
-    public var track: Track
-    public var folderName: String
+    var track: Track
+    var folderName: String
+    var layout: Layout
+    
+    @State var currentSelectedMenu = String()
     
     @State var trackFavourited: Bool = false
     
@@ -32,9 +35,101 @@ public struct SereneAudioStreamPlayer: View {
     
     @State var isDownloading = false
     
-    public init(track: Track, folderName: String) {
+    public init(track: Track, layout: Layout, folderName: String) {
         self.track = track
+        self.layout = layout
         self.folderName = folderName
+    }
+    
+    var likeButtonView: some View {
+        Button(action: {
+            
+            self.trackFavourited.toggle()
+            
+        }) {
+            
+            if track.favourited == true {
+                Image(systemName: "heart.fill")
+                    .foregroundColor(.red)
+                    .font(.headline)
+                    .padding()
+            } else {
+                Image(systemName: "heart")
+                    .foregroundColor(.white)
+                    .font(.headline)
+                    .padding()
+            }
+            
+        }
+    }
+    
+    var playButtonView: some View {
+        Button(action: {
+            if InternetConnectionManager.isConnectedToNetwork() {
+                print("Internet connection OK")
+                
+                
+                if self.player.isPlaying {
+                    
+                    self.player.pause()
+                    self.playing = false
+                } else {
+                    
+                    if self.finish {
+                        
+                        self.player.seek(to: .zero)
+                        self.width = 0
+                        self.finish = false
+                        
+                    }
+                    
+                    self.player.playImmediately(atRate: 1)
+                    self.playing = true
+                    
+                }
+            } else {
+                print("Internet connection FAILED")
+                
+                self.showingAlert = true
+                
+            }
+        }) {
+            
+            Image(systemName: self.playing && !self.finish ? "pause.fill" : "play.fill")
+                .foregroundColor(.white)
+                .font(.largeTitle)
+                .frame(width: 80, height: 80)
+                .background(.white.opacity(0.3))
+                .clipShape(Circle())
+        }
+    }
+    
+    var backwardButtonView: some View {
+        Button(action: {
+            
+            var timeBackward = self.player.currentTime().seconds
+            timeBackward -= 5
+            self.player.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player.currentTime().timescale))
+        }) {
+            Image(systemName: "gobackward.15")
+                .foregroundColor(.white)
+                .font(.headline)
+                .padding()
+        }
+    }
+    
+    var airplayView: some View {
+        Button(action: {
+            
+            
+            
+        }) {
+            Image(systemName: "airplayvideo")
+                .foregroundColor(.white)
+                .font(.headline)
+                .padding()
+            
+        }
     }
     
     public var body: some View {
@@ -75,162 +170,103 @@ public struct SereneAudioStreamPlayer: View {
                     
                     ZStack(alignment: .leading) {
                         
-                        Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
-                        
-                        Capsule().fill(Color.white).frame(width: self.width, height: 5)
-                            .gesture(DragGesture()
-                                .onChanged({ (value) in
-                                    
-                                    let x = value.location.x
-                                    
-                                    self.width = x
-                                    
-                                }).onEnded({ (value) in
-                                    
-                                    let x = value.location.x
-                                    
-                                    let screen = UIScreen.main.bounds.width - 30
-                                    
-                                    let percent = x / screen
-                                    
-                                    let seek = Double(percent) * self.player.currentItem!.asset.duration.seconds
-                                    
-                                    self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
-                                    
-                                }))
+                        if layout == .music {
+                            Image(.liveAudio)
+                        } else {
+                            Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
+                            
+                            Capsule().fill(Color.white).frame(width: self.width, height: 5)
+                                .gesture(DragGesture()
+                                    .onChanged({ (value) in
+                                        
+                                        let x = value.location.x
+                                        
+                                        self.width = x
+                                        
+                                    }).onEnded({ (value) in
+                                        
+                                        let x = value.location.x
+                                        
+                                        let screen = UIScreen.main.bounds.width - 30
+                                        
+                                        let percent = x / screen
+                                        
+                                        Task {
+                                            if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
+                                                let seek = Double(percent) * seconds
+                                                
+                                                await self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
+                                            }
+                                        }
+                                    }))
+                        }
                     }
                     .padding(.bottom, 20)
                     .padding(.horizontal)
                     
                     HStack {
                         
-                        Button(action: {
-                            
-                            
-                            
-                        }) {
-                            Image(systemName: "airplayvideo")
-                                .foregroundColor(.white)
-                                .font(.headline)
-                                .padding()
-                            
+                        airplayView
+                        
+                        Spacer()
+                        
+                        if layout == .classCollection {
+                            backwardButtonView
                         }
                         
                         Spacer()
                         
-                        Button(action: {
-                            
-                            var timeBackward = self.player.currentTime().seconds
-                            timeBackward -= 5
-                            self.player.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player.currentTime().timescale))
-                        }) {
-                            Image(systemName: "gobackward.15")
-                                .foregroundColor(.white)
-                                .font(.headline)
-                                .padding()
-                        }
+                        playButtonView
                         
                         Spacer()
                         
+                        if layout == .classCollection {
+                            likeButtonView
+                        }
                         
-                        Button(action: {
-                            if InternetConnectionManager.isConnectedToNetwork() {
-                                print("Internet connection OK")
+                        Spacer()
+                        switch layout {
+                        case .music, .unguided, .classCollection:
+                            KebabMenuView(options: [
+                                KebabMenuModel(text: "Share", icon: .share),
+                                KebabMenuModel(text: "Download", icon: .download)
+                            ], currentSelection: $currentSelectedMenu)
+                        case .unknown:
+                            Button(action: {
+                                let urlString = self.track.streamURL ?? ""
                                 
+                                let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
                                 
-                                if self.player.isPlaying {
-                                    
-                                    self.player.pause()
-                                    self.playing = false
+                                self.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
+                                    self.downloaded = true
+                                    self.disableDownload = true
+                                }
+                            }) {
+                                
+                                if isDownloading {
+                                    ActivityIndicatorView(isVisible: $isDownloading, type: .default)
+                                        .frame(width: 30, height: 30)
+                                        .foregroundColor(.white)
+                                        .padding()
                                 } else {
-                                    
-                                    if self.finish {
+                                    if downloaded {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.white)
+                                            .font(.headline)
+                                            .padding()
+                                    } else {
                                         
-                                        self.player.seek(to: .zero)
-                                        self.width = 0
-                                        self.finish = false
-                                        
+                                        Image(systemName: "icloud.and.arrow.down.fill")
+                                            .foregroundColor(.white)
+                                            .font(.headline)
+                                            .padding()
                                     }
-                                    
-                                    self.player.playImmediately(atRate: 1)
-                                    self.playing = true
-                                    
                                 }
-                            } else {
-                                print("Internet connection FAILED")
                                 
-                                self.showingAlert = true
                                 
                             }
-                        }) {
-                            
-                            Image(systemName: self.playing && !self.finish ? "pause.fill" : "play.fill")
-                                .foregroundColor(.white)
-                                .font(.largeTitle)
-                                .frame(width: 80, height: 80)
-                                .background(.white.opacity(0.3))
-                                .clipShape(Circle())
+                            .disabled(disableDownload)
                         }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            
-                            self.trackFavourited.toggle()
-                            
-                        }) {
-                            
-                            if track.favourited == true {
-                                Image(systemName: "heart.fill")
-                                    .foregroundColor(.red)
-                                    .font(.headline)
-                                    .padding()
-                            } else {
-                                Image(systemName: "heart")
-                                    .foregroundColor(.white)
-                                    .font(.headline)
-                                    .padding()
-                            }
-                            
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            let urlString = self.track.streamURL ?? ""
-                            
-                            let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-                            
-                            self.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
-                                self.downloaded = true
-                                self.disableDownload = true
-                            }
-                        }) {
-                            
-                            if isDownloading {
-                                ActivityIndicatorView(isVisible: $isDownloading, type: .default)
-                                    .frame(width: 30, height: 30)
-                                    .foregroundColor(.white)
-                                    .padding()
-                            } else {
-                                if downloaded {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.white)
-                                        .font(.headline)
-                                        .padding()
-                                } else {
-                                    
-                                    Image(systemName: "icloud.and.arrow.down.fill")
-                                        .foregroundColor(.white)
-                                        .font(.headline)
-                                        .padding()
-                                }
-                            }
-                            
-                            
-                        }
-                        .disabled(disableDownload)
-                        
                     }
                     .padding(.horizontal, 30)
                     .padding(.bottom, 30)
@@ -264,9 +300,12 @@ public struct SereneAudioStreamPlayer: View {
                                 
                                 let screen = UIScreen.main.bounds.width - 30
                                 
-                                let value = self.player.currentItem!.currentTime().seconds / self.player.currentItem!.asset.duration.seconds
-                                
-                                self.width = screen * CGFloat(value)
+                                Task {
+                                    if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
+                                        let value = self.player.currentItem!.currentTime().seconds / seconds
+                                        self.width = screen * CGFloat(value)
+                                    }
+                                }
                             }
                         }
                         
@@ -275,8 +314,23 @@ public struct SereneAudioStreamPlayer: View {
                             self.finish = true
                         }
                         
+                        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: self.player.currentItem, queue: .main) { _ in
+                            if layout == .music {
+                                self.player.seek(to: .zero)
+                                self.player.play()
+                            } else {
+                                self.finish = true
+                            }
+                        }
+                        
                         self.setupRemoteTransportControls()
-                        self.setupNowPlaying(track: self.track)
+                        Task {
+                            do {
+                                try await self.setupNowPlaying(track: self.track)
+                            } catch {
+                                
+                            }
+                        }
                         
                     }
                     .alert(isPresented: $showingAlert) {
@@ -330,7 +384,7 @@ public struct SereneAudioStreamPlayer: View {
         
     }
     
-    func setupNowPlaying(track: Track) {
+    func setupNowPlaying(track: Track) async throws {
         // Define Now Playing Info
         var nowPlayingInfo = [String : Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = track.title
@@ -342,7 +396,9 @@ public struct SereneAudioStreamPlayer: View {
         }
         
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = player.currentItem!.asset.duration.seconds
+        
+        
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = try await self.player.currentItem?.asset.load(.duration).seconds
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
         
         // Set the metadata
@@ -397,4 +453,13 @@ public struct SereneAudioStreamPlayer: View {
         }
     }
     
+}
+
+extension SereneAudioStreamPlayer {
+    public enum Layout {
+        case music
+        case unguided
+        case classCollection
+        case unknown
+    }
 }

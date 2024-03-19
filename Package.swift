@@ -27,7 +27,9 @@ let package = Package(
             dependencies: [
                 "ActivityIndicatorView",
                 "Kingfisher"
-        ]),
+        ],
+            resources: [.process("Assets")]
+        ),
         .testTarget(
             name: "SereneAudioPlayerTests",
             dependencies: ["SereneAudioPlayer"]),

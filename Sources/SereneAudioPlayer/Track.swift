@@ -14,14 +14,24 @@ public struct Track {
     var subtitle: String?
     var recording: String?
     var streamURL: String?
+    var backgroundAnimationURL: String?
     var favourited: Bool?
     
-    public init(image: String?, title: String?, subtitle: String?, recording: String?, streamURL: String?, favourited: Bool?) {
+    public init(
+        image: String?,
+        title: String?,
+        subtitle: String?,
+        recording: String?,
+        streamURL: String?,
+        backgroundAnimationURL: String?,
+        favourited: Bool?
+    ) {
         self.image = image
         self.title = title
         self.subtitle = subtitle
         self.recording = recording
         self.streamURL = streamURL
+        self.backgroundAnimationURL = backgroundAnimationURL
         self.favourited = favourited
     }
 }

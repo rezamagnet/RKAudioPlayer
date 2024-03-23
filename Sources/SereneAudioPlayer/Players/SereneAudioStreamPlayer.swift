@@ -10,6 +10,7 @@ import AVFoundation
 import MediaPlayer
 import ActivityIndicatorView
 import Kingfisher
+import AVKit
 
 public struct SereneAudioStreamPlayer: View {
     
@@ -25,6 +26,7 @@ public struct SereneAudioStreamPlayer: View {
     @State var trackFavourited: Bool = false
     
     @State var player : AVPlayer!
+    @State var backgroundPlayer: AVPlayer?
     @State var playing = false
     @State var width: CGFloat = 0
     @State var finish = false
@@ -34,6 +36,11 @@ public struct SereneAudioStreamPlayer: View {
     @State var showingAlert = false
     
     @State var isDownloading = false
+    
+    @State private var backgroundPlayerItemBufferEmptyObserver: NSKeyValueObservation?
+    @State private var backgroundPlayerItemBufferKeepUpObserver: NSKeyValueObservation?
+    @State private var backgroundPlayerItemBufferFullObserver: NSKeyValueObservation?
+    @State private var backgroundPlayerOpacity: Double = 0
     
     public init(track: Track, layout: Layout, folderName: String) {
         self.track = track
@@ -141,6 +148,42 @@ public struct SereneAudioStreamPlayer: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: UIScreen.main.bounds.width)
                     .edgesIgnoringSafeArea(.vertical)
+                
+                // Background Video Player
+                if let backgroundAnimationURL = track.backgroundAnimationURL {
+                    VideoPlayer(player: backgroundPlayer)
+                        .opacity(backgroundPlayerOpacity)
+                        .ignoresSafeArea()
+                        .onAppear {
+                            // MARK: - background player handler
+                            
+                            if let encodedAnimationString = backgroundAnimationURL.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed),
+                               let animationURL = URL(string: encodedAnimationString) {
+                                
+                                backgroundPlayer = AVPlayer(url: animationURL)
+                                backgroundPlayer?.isMuted = true
+                                backgroundPlayer?.play()
+                                
+                                NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: backgroundPlayer?.currentItem, queue: .main) { _ in
+                                    backgroundPlayer?.seek(to: .zero)
+                                    backgroundPlayer?.play()
+                                }
+                                    
+                                backgroundPlayerItemBufferKeepUpObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
+                                    backgroundPlayerOpacity = 1
+                                }
+                                    
+                                backgroundPlayerItemBufferFullObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackBufferFull, options: [.new]) { _,_  in
+                                    backgroundPlayerOpacity = 1
+                                }
+                                
+                            }
+                        }
+                        .onDisappear {
+                            backgroundPlayer?.pause()
+                            backgroundPlayer = nil
+                        }
+                }
                 
                 // Gradient Overlay (Clear to Black)
                 VStack {
@@ -281,6 +324,7 @@ public struct SereneAudioStreamPlayer: View {
                             
                         }
                         
+                        // MARK: - sound player handler
                         let urlString = self.track.streamURL ?? ""
                         
                         let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
@@ -314,7 +358,7 @@ public struct SereneAudioStreamPlayer: View {
                             self.finish = true
                         }
                         
-                        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: self.player.currentItem, queue: .main) { _ in
+                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player.currentItem, queue: .main) { _ in
                             if layout == .music {
                                 self.player.seek(to: .zero)
                                 self.player.play()

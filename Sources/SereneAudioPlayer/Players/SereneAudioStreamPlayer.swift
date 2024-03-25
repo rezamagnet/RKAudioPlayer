@@ -11,6 +11,7 @@ import MediaPlayer
 import ActivityIndicatorView
 import Kingfisher
 import AVKit
+import Combine
 
 public struct SereneAudioStreamPlayer: View {
     
@@ -20,6 +21,8 @@ public struct SereneAudioStreamPlayer: View {
     var track: Track
     var folderName: String
     var layout: Layout
+    var likeAction: () -> Bool
+    var shareAction: () -> Void
     
     @State var currentSelectedMenu = String()
     
@@ -37,27 +40,45 @@ public struct SereneAudioStreamPlayer: View {
     
     @State var isDownloading = false
     
+    @State var assetCurrentDuration: TimeInterval = .zero
+    @State var assetDuration: TimeInterval = .zero
+    @State private var playerItemBufferKeepUpObserver: NSKeyValueObservation?
+    
     @State private var backgroundPlayerItemBufferEmptyObserver: NSKeyValueObservation?
     @State private var backgroundPlayerItemBufferKeepUpObserver: NSKeyValueObservation?
     @State private var backgroundPlayerItemBufferFullObserver: NSKeyValueObservation?
     @State private var backgroundPlayerOpacity: Double = 0
     
-    public init(track: Track, layout: Layout, folderName: String) {
+    let durationFormatter: DateComponentsFormatter = {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.minute, .second]
+        formatter.unitsStyle = .positional
+        formatter.zeroFormattingBehavior = .pad
+        return formatter
+    }()
+    
+    public init(
+        track: Track,
+        layout: Layout,
+        folderName: String,
+        likeAction: @escaping () -> Bool,
+        shareAction: @escaping () -> Void
+    ) {
         self.track = track
         self.layout = layout
         self.folderName = folderName
+        self.likeAction = likeAction
+        self.shareAction = shareAction
     }
     
     var likeButtonView: some View {
         Button(action: {
-            
-            self.trackFavourited.toggle()
-            
+            trackFavourited = likeAction()
         }) {
             
             if track.favourited == true {
                 Image(systemName: "heart.fill")
-                    .foregroundColor(.red)
+                    .foregroundStyle(Color(UIColor(red: 58, green: 127, blue: 123, alpha: 1)))
                     .font(.headline)
                     .padding()
             } else {
@@ -87,7 +108,7 @@ public struct SereneAudioStreamPlayer: View {
                         self.player.seek(to: .zero)
                         self.width = 0
                         self.finish = false
-                        
+                        self.assetCurrentDuration = 0
                     }
                     
                     self.player.playImmediately(atRate: 1)
@@ -214,41 +235,54 @@ public struct SereneAudioStreamPlayer: View {
                     }
                     .padding(.horizontal)
                     
-                    ZStack(alignment: .leading) {
-                        
-                        if layout == .music {
-                            Image(.liveAudio)
-                        } else {
-                            Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
+                    VStack {
+                        ZStack(alignment: .leading) {
                             
-                            Capsule().fill(Color.white).frame(width: self.width, height: 5)
-                                .gesture(DragGesture()
-                                    .onChanged({ (value) in
-                                        
-                                        let x = value.location.x
-                                        
-                                        self.width = x
-                                        
-                                    }).onEnded({ (value) in
-                                        
-                                        let x = value.location.x
-                                        
-                                        let screen = UIScreen.main.bounds.width - 30
-                                        
-                                        let percent = x / screen
-                                        
-                                        Task {
-                                            if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
-                                                let seek = Double(percent) * seconds
-                                                
-                                                await self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
+                            if layout == .music {
+                                Image(.liveAudio)
+                            } else {
+                                Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
+                                
+                                Capsule().fill(Color.white).frame(width: self.width, height: 5)
+                                    .gesture(DragGesture()
+                                        .onChanged({ (value) in
+                                            
+                                            let x = value.location.x
+                                            
+                                            self.width = x
+                                            
+                                        }).onEnded({ (value) in
+                                            
+                                            let x = value.location.x
+                                            
+                                            let screen = UIScreen.main.bounds.width - 30
+                                            
+                                            let percent = x / screen
+                                            
+                                            Task {
+                                                if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
+                                                    let seek = Double(percent) * seconds
+                                                    
+                                                    await self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
+                                                    
+                                                    assetCurrentDuration = TimeInterval(seek)
+                                                }
                                             }
-                                        }
-                                    }))
+                                        }))
+                            }
                         }
+                        .padding(.horizontal)
+                        
+                        HStack {
+                            Text(durationFormatter.string(from: assetCurrentDuration)!)
+                            Spacer()
+                            Text(durationFormatter.string(from: assetDuration)!)
+                        }
+                        .foregroundStyle(.white)
+                        .font(.custom("Helvetica Neue", size: 12))
+                        .padding(.horizontal)
                     }
                     .padding(.bottom, 20)
-                    .padding(.horizontal)
                     
                     HStack {
                         
@@ -340,6 +374,10 @@ public struct SereneAudioStreamPlayer: View {
                         
                         self.player.automaticallyWaitsToMinimizeStalling = false
                         
+                        playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
+                            assetDuration = playerItem.duration.seconds
+                        }
+                        
                         
                         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (_) in
                             
@@ -351,6 +389,8 @@ public struct SereneAudioStreamPlayer: View {
                                     if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
                                         let value = self.player.currentItem!.currentTime().seconds / seconds
                                         self.width = screen * CGFloat(value)
+                                        
+                                        assetCurrentDuration += 1
                                     }
                                 }
                             }
@@ -383,6 +423,17 @@ public struct SereneAudioStreamPlayer: View {
                     .alert(isPresented: $showingAlert) {
                         Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
                         
+                    }
+                    .onChange(of: currentSelectedMenu) { value in
+                        switch value {
+                        case "Share":
+                            shareAction()
+                        case "Download":
+                            break
+                        default:
+                            break
+                        }
+                        currentSelectedMenu = ""
                     }
                     
                 }

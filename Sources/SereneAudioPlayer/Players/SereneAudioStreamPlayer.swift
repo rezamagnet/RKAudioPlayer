@@ -195,21 +195,24 @@ public struct SereneAudioStreamPlayer: View {
                         .frame(height: UIScreen.main.bounds.height / 1.5)
                 }
                 
-                VStack {
+                VStack(alignment: .leading) {
                     Spacer()
                     
                     VStack(alignment: .leading) {
                         Text(track.title ?? "No track title")
                             .foregroundColor(.white)
-                            .font(.custom("Quicksand SemiBold", size: 18))
+                            .font(.custom("Helvetica Neue", size: 32))
+                            .fontWeight(.bold)
                             .padding(.bottom, 8)
                             .multilineTextAlignment(.center)
                         
                         Text(track.subtitle ?? "No track subtitle")
                             .foregroundColor(.white)
-                            .font(.custom("Quicksand SemiBold", size: 16))
+                            .font(.custom("Helvetica Neue", size: 20))
+                            .fontWeight(.medium)
                             .padding(.bottom, 30)
                     }
+                    .padding(.horizontal)
                     
                     ZStack(alignment: .leading) {
                         

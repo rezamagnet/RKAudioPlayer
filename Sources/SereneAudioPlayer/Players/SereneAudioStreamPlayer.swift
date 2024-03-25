@@ -155,8 +155,6 @@ public struct SereneAudioStreamPlayer: View {
             Image(systemName: "airplayvideo")
                 .foregroundColor(.white)
                 .font(.headline)
-                .padding()
-            
         }
     }
     
@@ -272,39 +270,34 @@ public struct SereneAudioStreamPlayer: View {
                             }
                         }
                         .padding(.horizontal)
-                        
-                        HStack {
-                            Text(durationFormatter.string(from: assetCurrentDuration)!)
-                            Spacer()
-                            Text(durationFormatter.string(from: assetDuration)!)
+                        if layout != .music {
+                            HStack {
+                                Text(durationFormatter.string(from: assetCurrentDuration)!)
+                                Spacer()
+                                Text(durationFormatter.string(from: assetDuration)!)
+                            }
+                            .foregroundStyle(.white)
+                            .font(.custom("Helvetica Neue", size: 12))
+                            .padding(.horizontal)
                         }
-                        .foregroundStyle(.white)
-                        .font(.custom("Helvetica Neue", size: 12))
-                        .padding(.horizontal)
                     }
                     .padding(.bottom, 20)
                     
-                    HStack {
+                    HStack(alignment: .center, spacing: 32) {
                         
                         airplayView
                         
-                        Spacer()
                         
                         if layout == .classCollection {
                             backwardButtonView
                         }
                         
-                        Spacer()
-                        
                         playButtonView
-                        
-                        Spacer()
                         
                         if layout == .classCollection {
                             likeButtonView
                         }
                         
-                        Spacer()
                         switch layout {
                         case .music, .unguided, .classCollection:
                             KebabMenuView(options: [
@@ -348,7 +341,8 @@ public struct SereneAudioStreamPlayer: View {
                             .disabled(disableDownload)
                         }
                     }
-                    .padding(.horizontal, 30)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal)
                     .padding(.bottom, 30)
                     .onAppear {
                         

@@ -23,12 +23,13 @@ public struct SereneAudioStreamPlayer: View {
     var layout: Layout
     var likeAction: () -> Bool
     var shareAction: () -> Void
+    var finishedClass: () -> Void
     
     @State var currentSelectedMenu = String()
     
     @State var trackFavourited: Bool = false
     
-    @State var player : AVPlayer!
+    @State var player : AVPlayer?
     @State var backgroundPlayer: AVPlayer?
     @State var playing = false
     @State var width: CGFloat = 0
@@ -62,13 +63,15 @@ public struct SereneAudioStreamPlayer: View {
         layout: Layout,
         folderName: String,
         likeAction: @escaping () -> Bool,
-        shareAction: @escaping () -> Void
+        shareAction: @escaping () -> Void,
+        finishedClass: @escaping () -> Void
     ) {
         self.track = track
         self.layout = layout
         self.folderName = folderName
         self.likeAction = likeAction
         self.shareAction = shareAction
+        self.finishedClass = finishedClass
     }
     
     var likeButtonView: some View {
@@ -97,21 +100,21 @@ public struct SereneAudioStreamPlayer: View {
                 print("Internet connection OK")
                 
                 
-                if self.player.isPlaying {
+                if self.player?.isPlaying == true {
                     
-                    self.player.pause()
+                    self.player?.pause()
                     self.playing = false
                 } else {
                     
                     if self.finish {
                         
-                        self.player.seek(to: .zero)
+                        self.player?.seek(to: .zero)
                         self.width = 0
                         self.finish = false
                         self.assetCurrentDuration = 0
                     }
                     
-                    self.player.playImmediately(atRate: 1)
+                    self.player?.playImmediately(atRate: 1)
                     self.playing = true
                     
                 }
@@ -135,9 +138,9 @@ public struct SereneAudioStreamPlayer: View {
     var backwardButtonView: some View {
         Button(action: {
             
-            var timeBackward = self.player.currentTime().seconds
+            var timeBackward = self.player?.currentTime().seconds ?? 0
             timeBackward -= 5
-            self.player.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player.currentTime().timescale))
+            self.player?.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player?.currentTime().timescale ?? 0))
         }) {
             Image(systemName: "gobackward.15")
                 .foregroundColor(.white)
@@ -258,10 +261,10 @@ public struct SereneAudioStreamPlayer: View {
                                             let percent = x / screen
                                             
                                             Task {
-                                                if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
+                                                if let seconds = try await self.player?.currentItem?.asset.load(.duration).seconds {
                                                     let seek = Double(percent) * seconds
                                                     
-                                                    await self.player.seek(to: CMTime(seconds: seek, preferredTimescale: self.player.currentTime().timescale))
+                                                    await self.player?.seek(to: CMTime(seconds: seek, preferredTimescale: self.player?.currentTime().timescale ?? 0))
                                                     
                                                     assetCurrentDuration = TimeInterval(seek)
                                                 }
@@ -366,7 +369,7 @@ public struct SereneAudioStreamPlayer: View {
                         
                         self.player = AVPlayer(playerItem: playerItem)
                         
-                        self.player.automaticallyWaitsToMinimizeStalling = false
+                        self.player?.automaticallyWaitsToMinimizeStalling = false
                         
                         playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
                             assetDuration = playerItem.duration.seconds
@@ -375,16 +378,19 @@ public struct SereneAudioStreamPlayer: View {
                         
                         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (_) in
                             
-                            if self.player.isPlaying{
+                            if self.player?.isPlaying == true {
                                 
                                 let screen = UIScreen.main.bounds.width - 30
                                 
                                 Task {
-                                    if let seconds = try await self.player.currentItem?.asset.load(.duration).seconds {
-                                        let value = self.player.currentItem!.currentTime().seconds / seconds
+                                    if let seconds = try await self.player?.currentItem?.asset.load(.duration).seconds {
+                                        let value = (self.player?.currentItem!.currentTime().seconds ?? 0) / seconds
                                         self.width = screen * CGFloat(value)
                                         
                                         assetCurrentDuration += 1
+                                        if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
+                                            finishedClass()
+                                        }
                                     }
                                 }
                             }
@@ -395,10 +401,10 @@ public struct SereneAudioStreamPlayer: View {
                             self.finish = true
                         }
                         
-                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player.currentItem, queue: .main) { _ in
+                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player?.currentItem, queue: .main) { _ in
                             if layout == .music {
-                                self.player.seek(to: .zero)
-                                self.player.play()
+                                self.player?.seek(to: .zero)
+                                self.player?.play()
                             } else {
                                 self.finish = true
                             }
@@ -435,7 +441,11 @@ public struct SereneAudioStreamPlayer: View {
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        player.pause()
+                        backgroundPlayer?.pause()
+                        player?.pause()
+                        
+                        backgroundPlayer = nil
+                        player = nil
                         dismiss()
                     } label: {
                         Image(systemName: "multiply")
@@ -450,15 +460,20 @@ public struct SereneAudioStreamPlayer: View {
         }
     }
     
+    func getPercentComplete(currentDuration: TimeInterval, totalDuration: TimeInterval) -> Double {
+      guard totalDuration > 0 else { return 0 } // Handle cases where total duration is 0
+      return (currentDuration / totalDuration) * 100
+    }
+    
     func setupRemoteTransportControls() {
         // Get the shared MPRemoteCommandCenter
         let commandCenter = MPRemoteCommandCenter.shared()
         
         // Add handler for Play Command
         commandCenter.playCommand.addTarget { [self] event in
-            print("Play command - is playing: \(self.player.isPlaying)")
-            if !self.player.isPlaying {
-                self.player.play()
+            print("Play command - is playing: \(self.player?.isPlaying)")
+            if !(self.player?.isPlaying ?? false) {
+                self.player?.play()
                 return .success
             }
             return .commandFailed
@@ -466,9 +481,9 @@ public struct SereneAudioStreamPlayer: View {
         
         // Add handler for Pause Command
         commandCenter.pauseCommand.addTarget { [self] event in
-            print("Pause command - is playing: \(self.player.isPlaying)")
-            if self.player.isPlaying {
-                self.player.pause()
+            print("Pause command - is playing: \(self.player?.isPlaying)")
+            if self.player?.isPlaying == true {
+                self.player?.pause()
                 return .success
             }
             return .commandFailed
@@ -487,11 +502,11 @@ public struct SereneAudioStreamPlayer: View {
             }
         }
         
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player?.currentTime().seconds
         
         
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = try await self.player.currentItem?.asset.load(.duration).seconds
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = try await self.player?.currentItem?.asset.load(.duration).seconds
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player?.rate
         
         // Set the metadata
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo

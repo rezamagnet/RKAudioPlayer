@@ -23,7 +23,8 @@ public struct SereneAudioStreamPlayer: View {
     var layout: Layout
     var likeAction: () -> Bool
     var shareAction: () -> Void
-    var finishedClass: () -> Void
+    var onDismiss: (Bool) -> Void
+    @State var isSeen = false
     
     @State var currentSelectedMenu = String()
     
@@ -64,14 +65,14 @@ public struct SereneAudioStreamPlayer: View {
         folderName: String,
         likeAction: @escaping () -> Bool,
         shareAction: @escaping () -> Void,
-        finishedClass: @escaping () -> Void
+        onDismiss: @escaping (Bool) -> Void
     ) {
         self.track = track
         self.layout = layout
         self.folderName = folderName
         self.likeAction = likeAction
         self.shareAction = shareAction
-        self.finishedClass = finishedClass
+        self.onDismiss = onDismiss
     }
     
     var likeButtonView: some View {
@@ -389,7 +390,7 @@ public struct SereneAudioStreamPlayer: View {
                                         
                                         assetCurrentDuration += 1
                                         if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
-                                            finishedClass()
+                                            isSeen = true
                                         }
                                     }
                                 }
@@ -446,6 +447,7 @@ public struct SereneAudioStreamPlayer: View {
                         
                         backgroundPlayer = nil
                         player = nil
+                        onDismiss(isSeen)
                         dismiss()
                     } label: {
                         Image(systemName: "multiply")

@@ -305,8 +305,7 @@ public struct SereneAudioStreamPlayer: View {
                         switch layout {
                         case .music, .unguided, .classCollection:
                             KebabMenuView(options: [
-                                KebabMenuModel(text: "Share", icon: .share),
-                                KebabMenuModel(text: "Download", icon: .download)
+                                KebabMenuModel(text: "Share", icon: .share)
                             ], currentSelection: $currentSelectedMenu)
                         case .unknown:
                             Button(action: {

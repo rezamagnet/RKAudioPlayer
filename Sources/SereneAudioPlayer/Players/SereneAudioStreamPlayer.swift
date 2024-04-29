@@ -177,6 +177,7 @@ public struct SereneAudioStreamPlayer: View {
                     VideoPlayer(player: backgroundPlayer)
                         .opacity(backgroundPlayerOpacity)
                         .ignoresSafeArea()
+                        .disabled(true)
                         .onAppear {
                             // MARK: - background player handler
                             
@@ -185,7 +186,6 @@ public struct SereneAudioStreamPlayer: View {
                                 
                                 backgroundPlayer = AVPlayer(url: animationURL)
                                 backgroundPlayer?.isMuted = true
-                                backgroundPlayer?.play()
                                 
                                 NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: backgroundPlayer?.currentItem, queue: .main) { _ in
                                     backgroundPlayer?.seek(to: .zero)
@@ -194,6 +194,7 @@ public struct SereneAudioStreamPlayer: View {
                                     
                                 backgroundPlayerItemBufferKeepUpObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
                                     backgroundPlayerOpacity = 1
+                                    backgroundPlayer?.playImmediately(atRate: 1)
                                 }
                                     
                                 backgroundPlayerItemBufferFullObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackBufferFull, options: [.new]) { _,_  in
@@ -227,7 +228,7 @@ public struct SereneAudioStreamPlayer: View {
                             .font(.custom("Helvetica Neue", size: 32))
                             .fontWeight(.bold)
                             .padding(.bottom, 8)
-                            .multilineTextAlignment(.center)
+                            .multilineTextAlignment(.leading)
                         
                         Text(track.subtitle ?? "No track subtitle")
                             .foregroundColor(.white)
@@ -242,6 +243,7 @@ public struct SereneAudioStreamPlayer: View {
                             
                             if layout == .music {
                                 Image(.liveAudio)
+                                    .frame(maxWidth: .infinity)
                             } else {
                                 Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
                                 

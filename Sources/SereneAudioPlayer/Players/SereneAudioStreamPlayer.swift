@@ -173,7 +173,7 @@ public struct SereneAudioStreamPlayer: View {
                     .edgesIgnoringSafeArea(.vertical)
                 
                 // Background Video Player
-                if let backgroundAnimationURL = track.backgroundAnimationURL {
+                if let backgroundAnimationURL = track.animation.backgroundAnimationURL {
                     VideoPlayer(player: backgroundPlayer)
                         .opacity(backgroundPlayerOpacity)
                         .ignoresSafeArea()
@@ -185,7 +185,7 @@ public struct SereneAudioStreamPlayer: View {
                                let animationURL = URL(string: encodedAnimationString) {
                                 
                                 backgroundPlayer = AVPlayer(url: animationURL)
-                                backgroundPlayer?.isMuted = true
+                                backgroundPlayer?.volume = Float((track.animation.backgroundVolume ?? 0) / 100)
                                 
                                 NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: backgroundPlayer?.currentItem, queue: .main) { _ in
                                     backgroundPlayer?.seek(to: .zero)

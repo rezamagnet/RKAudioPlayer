@@ -14,8 +14,18 @@ public struct Track {
     var subtitle: String?
     var recording: String?
     var streamURL: String?
-    var backgroundAnimationURL: String?
+    var animation: Animation
     var favourited: Bool?
+    
+    public struct Animation {
+        let backgroundAnimationURL: String?
+        let backgroundVolume: Int?
+        
+        public init(backgroundAnimationURL: String?, backgroundVolume: Int?) {
+            self.backgroundAnimationURL = backgroundAnimationURL
+            self.backgroundVolume = backgroundVolume
+        }
+    }
     
     public init(
         image: String?,
@@ -23,7 +33,7 @@ public struct Track {
         subtitle: String?,
         recording: String?,
         streamURL: String?,
-        backgroundAnimationURL: String?,
+        animation: Animation,
         favourited: Bool?
     ) {
         self.image = image
@@ -31,7 +41,7 @@ public struct Track {
         self.subtitle = subtitle
         self.recording = recording
         self.streamURL = streamURL
-        self.backgroundAnimationURL = backgroundAnimationURL
+        self.animation = animation
         self.favourited = favourited
     }
 }

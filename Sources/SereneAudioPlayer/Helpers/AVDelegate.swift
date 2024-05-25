@@ -12,7 +12,6 @@ import MediaPlayer
 public class AVDelegate: NSObject, AVAudioPlayerDelegate{
     
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        
         NotificationCenter.default.post(name: NSNotification.Name("Finish"), object: nil)
     }
 }

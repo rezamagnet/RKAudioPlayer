@@ -24,6 +24,7 @@ public struct SereneAudioStreamPlayer: View {
     var likeAction: () -> Bool
     var shareAction: () -> Void
     var onDismiss: (Bool) -> Void
+    var onFinish: () -> Void
     @State var isSeen = false
     
     @State var currentSelectedMenu = String()
@@ -65,7 +66,8 @@ public struct SereneAudioStreamPlayer: View {
         folderName: String,
         likeAction: @escaping () -> Bool,
         shareAction: @escaping () -> Void,
-        onDismiss: @escaping (Bool) -> Void
+        onDismiss: @escaping (Bool) -> Void,
+        onFinish: @escaping () -> Void
     ) {
         self.track = track
         self.layout = layout
@@ -73,6 +75,7 @@ public struct SereneAudioStreamPlayer: View {
         self.likeAction = likeAction
         self.shareAction = shareAction
         self.onDismiss = onDismiss
+        self.onFinish = onFinish
     }
     
     var likeButtonView: some View {
@@ -397,18 +400,14 @@ public struct SereneAudioStreamPlayer: View {
                                 }
                             }
                         }
-                        
-                        NotificationCenter.default.addObserver(forName: NSNotification.Name("Finish"), object: nil, queue: .main) { (_) in
-                            
-                            self.finish = true
-                        }
-                        
+
                         NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player?.currentItem, queue: .main) { _ in
                             if layout == .music {
                                 self.player?.seek(to: .zero)
                                 self.player?.play()
                             } else {
                                 self.finish = true
+                                self.onFinish()
                             }
                         }
                         

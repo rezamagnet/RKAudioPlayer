@@ -188,7 +188,8 @@ public struct SereneAudioStreamPlayer: View {
                                let animationURL = URL(string: encodedAnimationString) {
                                 
                                 backgroundPlayer = AVPlayer(url: animationURL)
-                                backgroundPlayer?.volume = Float((track.animation.backgroundVolume ?? 0) / 100)
+                                let volume = Float(track.animation.backgroundVolume ?? 0) / 100
+                                backgroundPlayer?.volume = volume
                                 
                                 NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: backgroundPlayer?.currentItem, queue: .main) { _ in
                                     backgroundPlayer?.seek(to: .zero)

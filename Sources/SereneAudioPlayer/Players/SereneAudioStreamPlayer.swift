@@ -379,6 +379,8 @@ public struct SereneAudioStreamPlayer: View {
                         
                         playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
                             assetDuration = playerItem.duration.seconds
+                            player?.playImmediately(atRate: 1)
+                            playing = true
                         }
                         
                         

@@ -105,7 +105,7 @@ public struct SereneAudioStreamPlayer: View {
                 
                 
                 if self.player?.isPlaying == true {
-                    
+                    self.backgroundPlayer?.pause()
                     self.player?.pause()
                     self.playing = false
                 } else {
@@ -113,11 +113,13 @@ public struct SereneAudioStreamPlayer: View {
                     if self.finish {
                         
                         self.player?.seek(to: .zero)
+                        self.backgroundPlayer?.seek(to: .zero)
                         self.width = 0
                         self.finish = false
                         self.assetCurrentDuration = 0
                     }
                     
+                    self.backgroundPlayer?.playImmediately(atRate: 1)
                     self.player?.playImmediately(atRate: 1)
                     self.playing = true
                     
@@ -479,6 +481,7 @@ public struct SereneAudioStreamPlayer: View {
             print("Play command - is playing: \(self.player?.isPlaying)")
             if !(self.player?.isPlaying ?? false) {
                 self.player?.play()
+                self.backgroundPlayer?.play()
                 return .success
             }
             return .commandFailed
@@ -489,6 +492,7 @@ public struct SereneAudioStreamPlayer: View {
             print("Pause command - is playing: \(self.player?.isPlaying)")
             if self.player?.isPlaying == true {
                 self.player?.pause()
+                self.backgroundPlayer?.pause()
                 return .success
             }
             return .commandFailed

@@ -412,6 +412,9 @@ public struct SereneAudioStreamPlayer: View {
                                 self.player?.play()
                             } else {
                                 self.finish = true
+                                self.backgroundPlayer = nil
+                                self.player = nil
+                                self.dismiss()
                                 self.onFinish()
                             }
                         }

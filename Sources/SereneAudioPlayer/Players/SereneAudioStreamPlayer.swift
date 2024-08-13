@@ -60,6 +60,16 @@ public struct SereneAudioStreamPlayer: View {
         return formatter
     }()
     
+    private var streamURL: URL {
+        let urlString = self.track.streamURL ?? ""
+        
+        let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+        
+        let url = URL(string: encodedSoundString!)!
+        
+        return url
+    }
+    
     public init(
         track: Track,
         layout: Layout,
@@ -286,7 +296,9 @@ public struct SereneAudioStreamPlayer: View {
                             HStack {
                                 Text(durationFormatter.string(from: assetCurrentDuration)!)
                                 Spacer()
-                                Text(durationFormatter.string(from: assetDuration)!)
+                                if !assetDuration.isNaN && !assetDuration.isInfinite {
+                                    Text(durationFormatter.string(from: assetDuration)!)
+                                }
                             }
                             .foregroundStyle(.white)
                             .font(.custom("Helvetica Neue", size: 12))
@@ -367,41 +379,34 @@ public struct SereneAudioStreamPlayer: View {
                         }
                         
                         // MARK: - sound player handler
-                        let urlString = self.track.streamURL ?? ""
                         
-                        let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+                        let playerItem = AVPlayerItem(url: streamURL)
                         
-                        let url = URL(string: encodedSoundString!)
+                        player = AVPlayer(playerItem: playerItem)
                         
-                        let playerItem = AVPlayerItem(url: url!)
-                        
-                        self.player = AVPlayer(playerItem: playerItem)
-                        
-                        self.player?.automaticallyWaitsToMinimizeStalling = false
+                        player?.allowsExternalPlayback = true
                         
                         playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
                             assetDuration = playerItem.duration.seconds
-                            player?.playImmediately(atRate: 1)
+                            player?.play()
                             playing = true
+                            setupNowPlaying(track: track)
+                            setupRemoteTransportControls()
                         }
                         
-                        
-                        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (_) in
+                        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                             
                             if self.player?.isPlaying == true {
                                 
                                 let screen = UIScreen.main.bounds.width - 30
                                 
-                                Task {
-                                    if let seconds = try await self.player?.currentItem?.asset.load(.duration).seconds {
-                                        let value = (self.player?.currentItem!.currentTime().seconds ?? 0) / seconds
-                                        self.width = screen * CGFloat(value)
-                                        
-                                        assetCurrentDuration += 1
-                                        if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
-                                            isSeen = true
-                                        }
-                                    }
+                                let seconds = Float(player?.currentItem?.duration.seconds ?? 0)
+                                let value = Float(self.player?.currentItem!.currentTime().seconds ?? 0) / seconds
+                                self.width = screen * CGFloat(value)
+                                
+                                assetCurrentDuration += 1
+                                if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
+                                    isSeen = true
                                 }
                             }
                         }
@@ -418,16 +423,6 @@ public struct SereneAudioStreamPlayer: View {
                                 self.onFinish()
                             }
                         }
-                        
-                        self.setupRemoteTransportControls()
-                        Task {
-                            do {
-                                try await self.setupNowPlaying(track: self.track)
-                            } catch {
-                                
-                            }
-                        }
-                        
                     }
                     .alert(isPresented: $showingAlert) {
                         Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
@@ -481,7 +476,6 @@ public struct SereneAudioStreamPlayer: View {
         
         // Add handler for Play Command
         commandCenter.playCommand.addTarget { [self] event in
-            print("Play command - is playing: \(self.player?.isPlaying)")
             if !(self.player?.isPlaying ?? false) {
                 self.player?.play()
                 self.backgroundPlayer?.play()
@@ -492,7 +486,6 @@ public struct SereneAudioStreamPlayer: View {
         
         // Add handler for Pause Command
         commandCenter.pauseCommand.addTarget { [self] event in
-            print("Pause command - is playing: \(self.player?.isPlaying)")
             if self.player?.isPlaying == true {
                 self.player?.pause()
                 self.backgroundPlayer?.pause()
@@ -503,25 +496,27 @@ public struct SereneAudioStreamPlayer: View {
         
     }
     
-    func setupNowPlaying(track: Track) async throws {
+    func setupNowPlaying(track: Track) {
+        let nowPlayingInfoCenter = MPNowPlayingInfoCenter.default()
         // Define Now Playing Info
         var nowPlayingInfo = [String : Any]()
-        nowPlayingInfo[MPMediaItemPropertyTitle] = track.title
+        nowPlayingInfo[MPNowPlayingInfoPropertyAssetURL] = streamURL
+        nowPlayingInfo[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
+        nowPlayingInfo[MPMediaItemPropertyTitle] = track.title ?? ""
         
-        if let image = UIImage(named: track.image ?? "") {
-            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { size in
-                return image
-            }
-        }
+//        if let image = UIImage(named: track.image ?? "") {
+//            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { size in
+//                return image
+//            }
+//        }
         
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player?.currentTime().seconds
         
-        
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = try await self.player?.currentItem?.asset.load(.duration).seconds
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Float(player?.currentItem?.duration.seconds ?? 0)
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player?.rate
         
         // Set the metadata
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo
     }
     
     func downloadAndSaveAudioFile(_ audioFile: String, completion: @escaping (String) -> Void) {

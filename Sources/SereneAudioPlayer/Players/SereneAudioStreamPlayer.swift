@@ -47,9 +47,6 @@ public struct SereneAudioStreamPlayer: View {
     @State var assetDuration: TimeInterval = .zero
     @State private var playerItemBufferKeepUpObserver: NSKeyValueObservation?
     
-    @State private var backgroundPlayerItemBufferEmptyObserver: NSKeyValueObservation?
-    @State private var backgroundPlayerItemBufferKeepUpObserver: NSKeyValueObservation?
-    @State private var backgroundPlayerItemBufferFullObserver: NSKeyValueObservation?
     @State private var backgroundPlayerOpacity: Double = 0
     
     let durationFormatter: DateComponentsFormatter = {
@@ -177,6 +174,19 @@ public struct SereneAudioStreamPlayer: View {
         }
     }
     
+    var backgroundVideo: (url: URL, volume: Float)? {
+        if let backgroundAnimationURL = track.animation.backgroundAnimationURL,
+           let encodedAnimationString = backgroundAnimationURL.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed),
+           let animationURL = URL(string: encodedAnimationString) {
+            let volume = Float(track.animation.backgroundVolume ?? 0) / 100
+            
+            return (animationURL, volume)
+            
+        } else {
+            return nil
+        }
+    }
+    
     public var body: some View {
         NavigationStack {
             ZStack {
@@ -188,42 +198,21 @@ public struct SereneAudioStreamPlayer: View {
                     .edgesIgnoringSafeArea(.vertical)
                 
                 // Background Video Player
-                if let backgroundAnimationURL = track.animation.backgroundAnimationURL {
-                    VideoPlayer(player: backgroundPlayer)
-                        .opacity(backgroundPlayerOpacity)
-                        .ignoresSafeArea()
-                        .disabled(true)
-                        .onAppear {
-                            // MARK: - background player handler
-                            
-                            if let encodedAnimationString = backgroundAnimationURL.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed),
-                               let animationURL = URL(string: encodedAnimationString) {
-                                
-                                backgroundPlayer = AVPlayer(url: animationURL)
-                                let volume = Float(track.animation.backgroundVolume ?? 0) / 100
-                                backgroundPlayer?.volume = volume
-                                
-                                NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: backgroundPlayer?.currentItem, queue: .main) { _ in
-                                    backgroundPlayer?.seek(to: .zero)
-                                    backgroundPlayer?.play()
-                                }
-                                    
-                                backgroundPlayerItemBufferKeepUpObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
-                                    backgroundPlayerOpacity = 1
-                                    backgroundPlayer?.playImmediately(atRate: 1)
-                                }
-                                    
-                                backgroundPlayerItemBufferFullObserver = backgroundPlayer?.currentItem?.observe(\AVPlayerItem.isPlaybackBufferFull, options: [.new]) { _,_  in
-                                    backgroundPlayerOpacity = 1
-                                }
-                                
-                            }
-                        }
-                        .onDisappear {
-                            backgroundPlayer?.pause()
-                            backgroundPlayer = nil
-                        }
+                
+                if backgroundPlayer != nil {
+                    VideoPlayerView(player: $backgroundPlayer) {
+                        backgroundPlayerOpacity = 1
+                    }
+                    //                    VideoPlayer(player: backgroundPlayer)
+                    .opacity(backgroundPlayerOpacity)
+                    .ignoresSafeArea()
+                    .disabled(true)
+                    .onDisappear {
+                        backgroundPlayer?.pause()
+                        backgroundPlayer = nil
+                    }
                 }
+                
                 
                 // Gradient Overlay (Clear to Black)
                 VStack {
@@ -463,6 +452,12 @@ public struct SereneAudioStreamPlayer: View {
                 }
             })
         }
+        .onAppear {
+            if let backgroundVideo {
+                backgroundPlayer = AVPlayer(url: backgroundVideo.url)
+                backgroundPlayer?.volume = backgroundVideo.volume
+            }
+        }
     }
     
     func getPercentComplete(currentDuration: TimeInterval, totalDuration: TimeInterval) -> Double {
@@ -502,13 +497,20 @@ public struct SereneAudioStreamPlayer: View {
         var nowPlayingInfo = [String : Any]()
         nowPlayingInfo[MPNowPlayingInfoPropertyAssetURL] = streamURL
         nowPlayingInfo[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
-        nowPlayingInfo[MPMediaItemPropertyTitle] = track.title ?? ""
+        nowPlayingInfo[MPMediaItemPropertyTitle] = track.title ?? "Unknown Name"
         
-//        if let image = UIImage(named: track.image ?? "") {
-//            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { size in
-//                return image
-//            }
-//        }
+        DispatchQueue.global(qos: .background).async {
+            if let imageString = track.image,
+               let imageURL = URL(string: imageString),
+               let data = try? Data(contentsOf: imageURL),
+               let image = UIImage(data: data){
+                nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { size in
+                    return image
+                }
+            }
+            
+            nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo
+        }
         
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player?.currentTime().seconds
         

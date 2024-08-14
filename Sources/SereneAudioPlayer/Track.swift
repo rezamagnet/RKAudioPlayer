@@ -10,6 +10,7 @@ import Foundation
 public struct Track {
     
     var image: String?
+    var thumbnail: String?
     var title: String?
     var subtitle: String?
     var recording: String?
@@ -29,6 +30,7 @@ public struct Track {
     
     public init(
         image: String?,
+        thumbnail: String?,
         title: String?,
         subtitle: String?,
         recording: String?,
@@ -37,6 +39,7 @@ public struct Track {
         favourited: Bool?
     ) {
         self.image = image
+        self.thumbnail = thumbnail
         self.title = title
         self.subtitle = subtitle
         self.recording = recording

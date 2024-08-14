@@ -500,10 +500,10 @@ public struct SereneAudioStreamPlayer: View {
         nowPlayingInfo[MPMediaItemPropertyTitle] = track.title ?? "Unknown Name"
         
         DispatchQueue.global(qos: .background).async {
-            if let imageString = track.image,
+            if let imageString = track.thumbnail,
                let imageURL = URL(string: imageString),
                let data = try? Data(contentsOf: imageURL),
-               let image = UIImage(data: data){
+               let image = UIImage(data: data) {
                 nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { size in
                     return image
                 }

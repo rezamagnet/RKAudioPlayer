@@ -200,10 +200,9 @@ public struct SereneAudioStreamPlayer: View {
                 // Background Video Player
                 
                 if backgroundPlayer != nil {
-                    VideoPlayerView(player: $backgroundPlayer) {
+                    VideoPlayerView(player: $backgroundPlayer, isAudioPlayed: $playing) {
                         backgroundPlayerOpacity = 1
                     }
-                    //                    VideoPlayer(player: backgroundPlayer)
                     .opacity(backgroundPlayerOpacity)
                     .ignoresSafeArea()
                     .disabled(true)
@@ -212,7 +211,6 @@ public struct SereneAudioStreamPlayer: View {
                         backgroundPlayer = nil
                     }
                 }
-                
                 
                 // Gradient Overlay (Clear to Black)
                 VStack {
@@ -474,6 +472,7 @@ public struct SereneAudioStreamPlayer: View {
             if !(self.player?.isPlaying ?? false) {
                 self.player?.play()
                 self.backgroundPlayer?.play()
+                self.playing = true
                 return .success
             }
             return .commandFailed
@@ -484,6 +483,7 @@ public struct SereneAudioStreamPlayer: View {
             if self.player?.isPlaying == true {
                 self.player?.pause()
                 self.backgroundPlayer?.pause()
+                self.playing = false
                 return .success
             }
             return .commandFailed

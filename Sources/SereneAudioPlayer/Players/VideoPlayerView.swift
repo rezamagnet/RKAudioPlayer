@@ -11,6 +11,7 @@ import AVKit
 struct VideoPlayerView: UIViewControllerRepresentable {
     
     @Binding var player: AVPlayer?
+    @Binding var isAudioPlayed: Bool
     let onPlaying: () -> Void
     
     func makeUIViewController(context: Context) -> VideoPlayerViewController {
@@ -23,6 +24,8 @@ struct VideoPlayerView: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: VideoPlayerViewController, context: Context) {
+        uiViewController
+            .isAudioPlayed = isAudioPlayed
     }
     
     typealias UIViewControllerType = VideoPlayerViewController
@@ -34,19 +37,26 @@ class VideoPlayerViewController: AVPlayerViewController {
     private var backgroundPlayerItemBufferKeepUpObserver: NSKeyValueObservation?
     private var backgroundPlayerItemBufferFullObserver: NSKeyValueObservation?
     
+    var isAudioPlayed: Bool?
     var onPlaying: () -> Void = { }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: player?.currentItem, queue: .main) { [weak self] _ in
-            self?.player?.seek(to: .zero)
-            self?.player?.play()
+            
+            if self?.isAudioPlayed == true {
+                self?.player?.seek(to: .zero)
+                self?.player?.play()
+            }
         }
         
         backgroundPlayerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] _,_  in
             self?.onPlaying()
-            self?.player?.playImmediately(atRate: 1)
+            
+            if self?.isAudioPlayed == true {
+                self?.player?.playImmediately(atRate: 1)
+            }
         }
         
         backgroundPlayerItemBufferFullObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackBufferFull, options: [.new]) { [weak self] _,_  in

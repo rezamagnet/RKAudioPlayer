@@ -26,6 +26,7 @@ public struct SereneAudioStreamPlayer: View {
     var onDismiss: (Bool) -> Void
     var onFinish: () -> Void
     @State var isSeen = false
+    @State var isOSMediaInfoActivated = false
     
     @State var currentSelectedMenu = String()
     
@@ -377,8 +378,12 @@ public struct SereneAudioStreamPlayer: View {
                             assetDuration = playerItem.duration.seconds
                             player?.play()
                             playing = true
-                            setupNowPlaying(track: track)
-                            setupRemoteTransportControls()
+                            if isOSMediaInfoActivated == false {
+                                setupNowPlaying(track: track)
+                                setupRemoteTransportControls()
+                                isOSMediaInfoActivated = true
+                            }
+                            
                         }
                         
                         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
@@ -406,6 +411,7 @@ public struct SereneAudioStreamPlayer: View {
                                 self.finish = true
                                 self.backgroundPlayer = nil
                                 self.player = nil
+                                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
                                 self.dismiss()
                                 self.onFinish()
                             }
@@ -437,6 +443,7 @@ public struct SereneAudioStreamPlayer: View {
                         
                         backgroundPlayer = nil
                         player = nil
+                        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
                         onDismiss(isSeen)
                         dismiss()
                     } label: {

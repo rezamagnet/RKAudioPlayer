@@ -153,7 +153,12 @@ public struct SereneAudioStreamPlayer: View {
         Button(action: {
             
             var timeBackward = self.player?.currentTime().seconds ?? 0
-            timeBackward -= 5
+            timeBackward -= 15
+            if assetCurrentDuration < 15 {
+                assetCurrentDuration = 0
+            } else {
+                assetCurrentDuration = TimeInterval(timeBackward)
+            }
             self.player?.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player?.currentTime().timescale ?? 0))
         }) {
             Image(systemName: "gobackward.15")
@@ -395,7 +400,6 @@ public struct SereneAudioStreamPlayer: View {
                                 let seconds = Float(player?.currentItem?.duration.seconds ?? 0)
                                 let value = Float(self.player?.currentItem!.currentTime().seconds ?? 0) / seconds
                                 self.width = screen * CGFloat(value)
-                                
                                 assetCurrentDuration += 1
                                 if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
                                     isSeen = true

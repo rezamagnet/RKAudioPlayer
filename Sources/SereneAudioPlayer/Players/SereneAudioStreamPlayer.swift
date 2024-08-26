@@ -33,6 +33,7 @@ public struct SereneAudioStreamPlayer: View {
     @State var trackFavourited: Bool = false
     
     @State var player : AVPlayer?
+    @State var looperPlayer: AVPlayerLooper?
     @State var backgroundPlayer: AVPlayer?
     @State var playing = false
     @State var width: CGFloat = 0
@@ -457,15 +458,22 @@ public struct SereneAudioStreamPlayer: View {
                             .background(.white.opacity(0.3))
                             .clipShape(Circle())
                     }
-                    
                 }
             })
         }
         .onAppear {
-            if let backgroundVideo {
-                backgroundPlayer = AVPlayer(url: backgroundVideo.url)
-                backgroundPlayer?.volume = backgroundVideo.volume
-            }
+            setupBackgroundVideo()
+        }
+    }
+    
+    private func setupBackgroundVideo() {
+        if let backgroundVideo {
+            let asset = AVURLAsset(url: backgroundVideo.url)
+            let playerItem = AVPlayerItem(asset: asset)
+            let queuePlayer = AVQueuePlayer(playerItem: playerItem)
+            looperPlayer = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+            backgroundPlayer = queuePlayer
+            backgroundPlayer?.volume = backgroundVideo.volume
         }
     }
     

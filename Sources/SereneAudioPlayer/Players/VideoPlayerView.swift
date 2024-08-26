@@ -43,14 +43,6 @@ class VideoPlayerViewController: AVPlayerViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: player?.currentItem, queue: .main) { [weak self] _ in
-            
-            if self?.isAudioPlayed == true {
-                self?.player?.seek(to: .zero)
-                self?.player?.play()
-            }
-        }
-        
         backgroundPlayerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] _,_  in
             self?.onPlaying()
             

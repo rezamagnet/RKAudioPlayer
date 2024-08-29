@@ -34,7 +34,9 @@ public struct SereneAudioStreamPlayer: View {
     
     @State var player : AVPlayer?
     @State var looperPlayer: AVPlayerLooper?
+    @State var noiseLooperPlayer: AVPlayerLooper?
     @State var backgroundPlayer: AVPlayer?
+    @State var noisePlayer: AVPlayer?
     @State var playing = false
     @State var width: CGFloat = 0
     @State var finish = false
@@ -114,21 +116,21 @@ public struct SereneAudioStreamPlayer: View {
                 
                 
                 if self.player?.isPlaying == true {
-                    self.backgroundPlayer?.pause()
+                    self.noisePlayer?.pause()
                     self.player?.pause()
                     self.playing = false
                 } else {
                     
                     if self.finish {
-                        
                         self.player?.seek(to: .zero)
+                        self.noisePlayer?.seek(to: .zero)
                         self.backgroundPlayer?.seek(to: .zero)
                         self.width = 0
                         self.finish = false
                         self.assetCurrentDuration = 0
                     }
                     
-                    self.backgroundPlayer?.playImmediately(atRate: 1)
+                    self.noisePlayer?.play()
                     self.player?.playImmediately(atRate: 1)
                     self.playing = true
                     
@@ -209,6 +211,7 @@ public struct SereneAudioStreamPlayer: View {
                 if backgroundPlayer != nil {
                     VideoPlayerView(player: $backgroundPlayer, isAudioPlayed: $playing) {
                         backgroundPlayerOpacity = 1
+                        noisePlayer?.play()
                     }
                     .opacity(backgroundPlayerOpacity)
                     .ignoresSafeArea()
@@ -216,6 +219,15 @@ public struct SereneAudioStreamPlayer: View {
                     .onDisappear {
                         backgroundPlayer?.pause()
                         backgroundPlayer = nil
+                    }
+                    
+                    VideoPlayerView(player: $noisePlayer, isAudioPlayed: $playing) { }
+                    .opacity(0)
+                    .ignoresSafeArea()
+                    .disabled(true)
+                    .onDisappear {
+                        noisePlayer?.pause()
+                        noisePlayer = nil
                     }
                 }
                 
@@ -415,6 +427,7 @@ public struct SereneAudioStreamPlayer: View {
                             } else {
                                 self.finish = true
                                 self.backgroundPlayer = nil
+                                self.noisePlayer = nil
                                 self.player = nil
                                 MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
                                 self.dismiss()
@@ -443,9 +456,11 @@ public struct SereneAudioStreamPlayer: View {
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        noisePlayer?.pause()
                         backgroundPlayer?.pause()
                         player?.pause()
                         
+                        noisePlayer = nil
                         backgroundPlayer = nil
                         player = nil
                         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -473,7 +488,16 @@ public struct SereneAudioStreamPlayer: View {
             let queuePlayer = AVQueuePlayer(playerItem: playerItem)
             looperPlayer = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
             backgroundPlayer = queuePlayer
-            backgroundPlayer?.volume = backgroundVideo.volume
+            backgroundPlayer?.isMuted = true
+            
+            let noiseFile = Bundle.module.url(forResource: "Final Noise Track 20 min", withExtension: "mp3")!
+            let noiseAsset = AVURLAsset(url: noiseFile)
+            let noisePlayerItem = AVPlayerItem(asset: noiseAsset)
+            let noiseQueuePlayer = AVQueuePlayer(playerItem: noisePlayerItem)
+            noiseLooperPlayer = AVPlayerLooper(player: noiseQueuePlayer, templateItem: noisePlayerItem)
+            
+            noisePlayer = noiseQueuePlayer
+            noisePlayer?.volume = backgroundVideo.volume
         }
     }
     
@@ -490,7 +514,7 @@ public struct SereneAudioStreamPlayer: View {
         commandCenter.playCommand.addTarget { [self] event in
             if !(self.player?.isPlaying ?? false) {
                 self.player?.play()
-                self.backgroundPlayer?.play()
+                self.noisePlayer?.play()
                 self.playing = true
                 return .success
             }
@@ -501,7 +525,7 @@ public struct SereneAudioStreamPlayer: View {
         commandCenter.pauseCommand.addTarget { [self] event in
             if self.player?.isPlaying == true {
                 self.player?.pause()
-                self.backgroundPlayer?.pause()
+                self.noisePlayer?.pause()
                 self.playing = false
                 return .success
             }

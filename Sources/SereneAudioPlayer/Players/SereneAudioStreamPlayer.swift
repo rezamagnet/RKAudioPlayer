@@ -94,7 +94,7 @@ public struct SereneAudioStreamPlayer: View {
             trackFavourited = likeAction()
         }) {
             
-            if track.favourited == true {
+            if track.favorited == true {
                 Image(systemName: "heart.fill")
                     .foregroundStyle(Color(UIColor(red: 58, green: 127, blue: 123, alpha: 1)))
                     .font(.headline)
@@ -329,7 +329,7 @@ public struct SereneAudioStreamPlayer: View {
                         }
                         
                         switch layout {
-                        case .music, .unguided, .classCollection:
+                        case .music, .unguided, .intro, .classCollection:
                             KebabMenuView(options: [
                                 KebabMenuModel(text: "Share", icon: .share)
                             ], currentSelection: $currentSelectedMenu)
@@ -620,5 +620,6 @@ extension SereneAudioStreamPlayer {
         case unguided
         case classCollection
         case unknown
+        case intro
     }
 }

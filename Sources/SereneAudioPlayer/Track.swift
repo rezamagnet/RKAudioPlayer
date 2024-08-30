@@ -16,7 +16,7 @@ public struct Track {
     var recording: String?
     var streamURL: String?
     var animation: Animation
-    var favourited: Bool?
+    var favorited: Bool?
     
     public struct Animation {
         let backgroundAnimationURL: String?
@@ -36,7 +36,7 @@ public struct Track {
         recording: String?,
         streamURL: String?,
         animation: Animation,
-        favourited: Bool?
+        favorited: Bool?
     ) {
         self.image = image
         self.thumbnail = thumbnail
@@ -45,6 +45,6 @@ public struct Track {
         self.recording = recording
         self.streamURL = streamURL
         self.animation = animation
-        self.favourited = favourited
+        self.favorited = favorited
     }
 }

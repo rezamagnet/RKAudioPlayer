@@ -153,7 +153,7 @@ public struct SereneAudioFilePlayer: View {
                         
                     }) {
                         
-                        if track.favourited == true {
+                        if track.favorited == true {
                             Image(systemName: "heart.fill")
                                 .foregroundColor(.red)
                                 .font(.headline)

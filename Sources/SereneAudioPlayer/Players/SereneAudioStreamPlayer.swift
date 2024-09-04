@@ -32,13 +32,12 @@ public struct SereneAudioStreamPlayer: View {
     
     @State var trackFavourited: Bool = false
     
-    @State var player : AVPlayer?
+    @ObservedObject var player = Player(avPlayer: AVPlayer())
     @State var looperPlayer: AVPlayerLooper?
     @State var noiseLooperPlayer: AVPlayerLooper?
     @State var backgroundPlayer: AVPlayer?
     @State var noisePlayer: AVPlayer?
     @State var playing = false
-    @State var width: CGFloat = 0
     @State var finish = false
     
     @State var downloaded = false
@@ -47,7 +46,6 @@ public struct SereneAudioStreamPlayer: View {
     
     @State var isDownloading = false
     
-    @State var assetCurrentDuration: TimeInterval = .zero
     @State var assetDuration: TimeInterval = .zero
     @State private var playerItemBufferKeepUpObserver: NSKeyValueObservation?
     
@@ -115,23 +113,21 @@ public struct SereneAudioStreamPlayer: View {
                 print("Internet connection OK")
                 
                 
-                if self.player?.isPlaying == true {
+                if self.player.isPlaying {
                     self.noisePlayer?.pause()
-                    self.player?.pause()
+                    self.player.pause()
                     self.playing = false
                 } else {
                     
                     if self.finish {
-                        self.player?.seek(to: .zero)
+                        self.player.seekToBegin()
                         self.noisePlayer?.seek(to: .zero)
                         self.backgroundPlayer?.seek(to: .zero)
-                        self.width = 0
                         self.finish = false
-                        self.assetCurrentDuration = 0
                     }
                     
                     self.noisePlayer?.play()
-                    self.player?.playImmediately(atRate: 1)
+                    self.player.play()
                     self.playing = true
                     
                 }
@@ -154,15 +150,7 @@ public struct SereneAudioStreamPlayer: View {
     
     var backwardButtonView: some View {
         Button(action: {
-            
-            var timeBackward = self.player?.currentTime().seconds ?? 0
-            timeBackward -= 15
-            if assetCurrentDuration < 15 {
-                assetCurrentDuration = 0
-            } else {
-                assetCurrentDuration = TimeInterval(timeBackward)
-            }
-            self.player?.seek(to: CMTime(seconds: timeBackward, preferredTimescale: self.player?.currentTime().timescale ?? 0))
+            player.backward()
         }) {
             Image(systemName: "gobackward.15")
                 .foregroundColor(.white)
@@ -173,8 +161,6 @@ public struct SereneAudioStreamPlayer: View {
     
     var airplayView: some View {
         Button(action: {
-            
-            
             
         }) {
             Image(systemName: "airplayvideo")
@@ -267,43 +253,31 @@ public struct SereneAudioStreamPlayer: View {
                                 Image(.liveAudio)
                                     .frame(maxWidth: .infinity)
                             } else {
-                                Capsule().fill(Color.white.opacity(0.08)).frame(height: 5)
-                                
-                                Capsule().fill(Color.white).frame(width: self.width, height: 5)
-                                    .gesture(DragGesture()
-                                        .onChanged({ (value) in
-                                            
-                                            let x = value.location.x
-                                            
-                                            self.width = x
-                                            
-                                        }).onEnded({ (value) in
-                                            
-                                            let x = value.location.x
-                                            
-                                            let screen = UIScreen.main.bounds.width - 30
-                                            
-                                            let percent = x / screen
-                                            
-                                            Task {
-                                                if let seconds = try await self.player?.currentItem?.asset.load(.duration).seconds {
-                                                    let seek = Double(percent) * seconds
-                                                    
-                                                    await self.player?.seek(to: CMTime(seconds: seek, preferredTimescale: self.player?.currentTime().timescale ?? 0))
-                                                    
-                                                    assetCurrentDuration = TimeInterval(seek)
-                                                }
+                                Group {
+                                    if player.itemDuration > 0 {
+                                        Slider(value: $player.displayTime, in: 0...player.itemDuration) { isScrubStarted in
+                                            if isScrubStarted {
+                                                self.player.scrubState = .scrubStarted
+                                            } else {
+                                                self.player.scrubState = .scrubEnded(self.player.displayTime)
                                             }
-                                        }))
+                                        }
+                                    } else {
+                                        Slider(value: .constant(0))
+                                    }
+                                }
+                                .onAppear {
+                                    UISlider.appearance().thumbTintColor = UIColor(Color.accentColor)
+                                }
                             }
                         }
                         .padding(.horizontal)
                         if layout != .music {
                             HStack {
-                                Text(durationFormatter.string(from: assetCurrentDuration)!)
+                                Text(durationFormatter.string(from: player.displayTime)!)
                                 Spacer()
-                                if !assetDuration.isNaN && !assetDuration.isInfinite {
-                                    Text(durationFormatter.string(from: assetDuration)!)
+                                if player.itemDuration > 0 {
+                                    Text(durationFormatter.string(from: player.itemDuration)!)
                                 }
                             }
                             .foregroundStyle(.white)
@@ -388,52 +362,42 @@ public struct SereneAudioStreamPlayer: View {
                         
                         let playerItem = AVPlayerItem(url: streamURL)
                         
-                        player = AVPlayer(playerItem: playerItem)
+                        player.updateCurrentItemTo(playerItem: playerItem)
                         
-                        player?.allowsExternalPlayback = true
-                        
-                        playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
-                            assetDuration = playerItem.duration.seconds
-                            player?.play()
-                            playing = true
-                            if isOSMediaInfoActivated == false {
-                                setupNowPlaying(track: track)
-                                setupRemoteTransportControls()
-                                isOSMediaInfoActivated = true
-                            }
-                            
-                        }
+//                        playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
+//                            assetDuration = playerItem.duration.seconds
+//                            player?.play()
+//                            playing = true
+//                            if isOSMediaInfoActivated == false {
+//                                setupNowPlaying(track: track)
+//                                setupRemoteTransportControls()
+//                                isOSMediaInfoActivated = true
+//                            }
+//                        }
                         
                         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                             
-                            if self.player?.isPlaying == true {
-                                
-                                let screen = UIScreen.main.bounds.width - 30
-                                
-                                let seconds = Float(player?.currentItem?.duration.seconds ?? 0)
-                                let value = Float(self.player?.currentItem!.currentTime().seconds ?? 0) / seconds
-                                self.width = screen * CGFloat(value)
-                                assetCurrentDuration += 1
-                                if getPercentComplete(currentDuration: assetCurrentDuration, totalDuration: assetDuration) > 75 {
+                            if self.player.isPlaying {
+                                if self.player.getPercentComplete > 75 {
                                     isSeen = true
                                 }
                             }
                         }
 
-                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player?.currentItem, queue: .main) { _ in
-                            if layout == .music {
-                                self.player?.seek(to: .zero)
-                                self.player?.play()
-                            } else {
-                                self.finish = true
-                                self.backgroundPlayer = nil
-                                self.noisePlayer = nil
-                                self.player = nil
-                                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-                                self.dismiss()
-                                self.onFinish()
-                            }
-                        }
+//                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player?.currentItem, queue: .main) { _ in
+//                            if layout == .music {
+//                                self.player?.seek(to: .zero)
+//                                self.player?.play()
+//                            } else {
+//                                self.finish = true
+//                                self.backgroundPlayer = nil
+//                                self.noisePlayer = nil
+//                                self.player = nil
+//                                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+//                                self.dismiss()
+//                                self.onFinish()
+//                            }
+//                        }
                     }
                     .alert(isPresented: $showingAlert) {
                         Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
@@ -458,11 +422,10 @@ public struct SereneAudioStreamPlayer: View {
                     Button {
                         noisePlayer?.pause()
                         backgroundPlayer?.pause()
-                        player?.pause()
+                        player.pause()
                         
                         noisePlayer = nil
                         backgroundPlayer = nil
-                        player = nil
                         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
                         onDismiss(isSeen)
                         dismiss()
@@ -512,8 +475,8 @@ public struct SereneAudioStreamPlayer: View {
         
         // Add handler for Play Command
         commandCenter.playCommand.addTarget { [self] event in
-            if !(self.player?.isPlaying ?? false) {
-                self.player?.play()
+            if !(player.isPlaying) {
+                self.player.play()
                 self.noisePlayer?.play()
                 self.playing = true
                 return .success
@@ -523,8 +486,8 @@ public struct SereneAudioStreamPlayer: View {
         
         // Add handler for Pause Command
         commandCenter.pauseCommand.addTarget { [self] event in
-            if self.player?.isPlaying == true {
-                self.player?.pause()
+            if player.isPlaying {
+                self.player.pause()
                 self.noisePlayer?.pause()
                 self.playing = false
                 return .success
@@ -555,10 +518,10 @@ public struct SereneAudioStreamPlayer: View {
             nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo
         }
         
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player?.currentTime().seconds
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.itemDuration
         
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Float(player?.currentItem?.duration.seconds ?? 0)
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player?.rate
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Float(player.itemDuration)
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate
         
         // Set the metadata
         nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Resources
 
 struct KebabMenuModel: Hashable {
     let text: String

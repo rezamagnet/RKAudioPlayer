@@ -214,6 +214,7 @@ public struct SereneAudioStreamPlayer: View {
                     .onDisappear {
                         noisePlayer?.pause()
                         noisePlayer = nil
+                        player.pause()
                     }
                 }
                 
@@ -255,20 +256,20 @@ public struct SereneAudioStreamPlayer: View {
                             } else {
                                 Group {
                                     if player.itemDuration > 0 {
-                                        Slider(value: $player.displayTime, in: 0...player.itemDuration) { isScrubStarted in
+                                        SliderView(value: $player.displayTime, in: 0...player.itemDuration) { isScrubStarted in
                                             if isScrubStarted {
                                                 self.player.scrubState = .scrubStarted
                                             } else {
                                                 self.player.scrubState = .scrubEnded(self.player.displayTime)
                                             }
                                         }
+                                        .frame(height: 10)
                                     } else {
-                                        Slider(value: .constant(0))
+                                        SliderView(value: $player.displayTime, in: 0...0) { _ in }
+                                            .frame(height: 10)
                                     }
                                 }
-                                .onAppear {
-                                    UISlider.appearance().thumbTintColor = UIColor(Color.accentColor)
-                                }
+                                .foregroundStyle(Color.accentColor)
                             }
                         }
                         .padding(.horizontal)
@@ -364,16 +365,33 @@ public struct SereneAudioStreamPlayer: View {
                         
                         player.updateCurrentItemTo(playerItem: playerItem)
                         
-//                        playerItemBufferKeepUpObserver = player?.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { _,_  in
-//                            assetDuration = playerItem.duration.seconds
-//                            player?.play()
-//                            playing = true
-//                            if isOSMediaInfoActivated == false {
-//                                setupNowPlaying(track: track)
-//                                setupRemoteTransportControls()
-//                                isOSMediaInfoActivated = true
-//                            }
-//                        }
+                        player.onStart = {
+                            assetDuration = playerItem.duration.seconds
+                            player.play()
+                            playing = true
+                            if isOSMediaInfoActivated == false {
+                                setupNowPlaying(track: track)
+                                setupRemoteTransportControls()
+                                isOSMediaInfoActivated = true
+                            }
+                        }
+                        
+                        player.onFinish = {
+                            if layout == .music {
+                                self.player.seekToBegin()
+                                self.player.play()
+                            } else {
+                                self.backgroundPlayer?.pause()
+                                self.noisePlayer?.pause()
+                                self.player.pause()
+                                self.finish = true
+                                self.backgroundPlayer = nil
+                                self.noisePlayer = nil
+                                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+                                self.dismiss()
+                                self.onFinish()
+                            }
+                        }
                         
                         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                             
@@ -383,21 +401,6 @@ public struct SereneAudioStreamPlayer: View {
                                 }
                             }
                         }
-
-//                        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: self.player?.currentItem, queue: .main) { _ in
-//                            if layout == .music {
-//                                self.player?.seek(to: .zero)
-//                                self.player?.play()
-//                            } else {
-//                                self.finish = true
-//                                self.backgroundPlayer = nil
-//                                self.noisePlayer = nil
-//                                self.player = nil
-//                                MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-//                                self.dismiss()
-//                                self.onFinish()
-//                            }
-//                        }
                     }
                     .alert(isPresented: $showingAlert) {
                         Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
@@ -426,6 +429,7 @@ public struct SereneAudioStreamPlayer: View {
                         
                         noisePlayer = nil
                         backgroundPlayer = nil
+                        self.player.pause()
                         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
                         onDismiss(isSeen)
                         dismiss()

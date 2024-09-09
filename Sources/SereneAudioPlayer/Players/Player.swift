@@ -46,6 +46,11 @@ final class Player: NSObject, ObservableObject {
         avPlayer.currentTime()
     }
     
+    private var playerItemBufferKeepUpObserver: NSKeyValueObservation?
+    
+    var onStart: () -> Void = {}
+    var onFinish: () -> Void = {}
+    
     func seekToBegin() {
         avPlayer.seek(to: .zero)
     }
@@ -62,6 +67,10 @@ final class Player: NSObject, ObservableObject {
     
     func updateCurrentItemTo(playerItem: AVPlayerItem) {
         avPlayer.replaceCurrentItem(with: playerItem)
+        
+        NotificationCenter.default.removeObserver(self)
+        startItemObserver()
+        finishItemObserver()
     }
     
     var getPercentComplete: Double {
@@ -92,6 +101,8 @@ final class Player: NSObject, ObservableObject {
         self.addPeriodicTimeObserver()
         self.addTimeControlStatusObserver()
         self.addItemDurationPublisher()
+        startItemObserver()
+        finishItemObserver()
     }
 
     deinit {
@@ -106,6 +117,18 @@ final class Player: NSObject, ObservableObject {
 
     func pause() {
         self.avPlayer.pause()
+    }
+    
+    private func startItemObserver() {
+        playerItemBufferKeepUpObserver = avPlayer.currentItem?.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] _,_  in
+            self?.onStart()
+        }
+    }
+    
+    private func finishItemObserver() {
+        NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: avPlayer.currentItem, queue: .main) { [weak self] _ in
+            self?.onFinish()
+        }
     }
 
     fileprivate func addPeriodicTimeObserver() {

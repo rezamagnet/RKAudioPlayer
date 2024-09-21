@@ -39,7 +39,6 @@ final class Player {
     }
     
     /// Display time that will be bound to the scrub slider.
-//    var displayTime: TimeInterval = 0
     var displayTimeSubject: CurrentValueSubject<TimeInterval, Never> = .init(0)
     
     

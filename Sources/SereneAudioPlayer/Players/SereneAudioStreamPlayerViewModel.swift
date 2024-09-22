@@ -89,10 +89,6 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    func noisePlay() {
-        backgroundPlayerManager?.noisePlayer?.play()
-    }
-    
     func updateScrub(_ scrub: PlayerScrubState) {
         player?.scrubState = scrub
     }
@@ -171,7 +167,7 @@ extension SereneAudioStreamPlayerViewModel {
         
         if InternetConnectionManager.isConnectedToNetwork() {
             
-            if playerIsPlaying {
+            if isPlaying {
                 backgroundPlayerManager?.pause()
                 player?.pause()
                 isPlaying = false

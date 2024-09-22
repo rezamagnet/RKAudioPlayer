@@ -18,8 +18,6 @@ public struct SereneAudioStreamPlayer: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.presentationMode) var presentationMode
     
-    private let nowPlayingInfoCenter = MPNowPlayingInfoCenter.default()
-    
     @State var currentSelectedMenu = String()
     
     @ObservedObject public var viewModel: SereneAudioStreamPlayerViewModel
@@ -103,7 +101,6 @@ public struct SereneAudioStreamPlayer: View {
                 if viewModel.backgroundPlayer != nil {
                     VideoPlayerView(player: $viewModel.backgroundPlayer, isAudioPlayed: $viewModel.isPlaying) {
                         backgroundPlayerOpacity = 1
-                        viewModel.noisePlay()
                     }
                     .opacity(backgroundPlayerOpacity)
                     .ignoresSafeArea()
@@ -212,9 +209,7 @@ public struct SereneAudioStreamPlayer: View {
                                 let urlString = viewModel.track.streamURL ?? ""
                                 
                                 let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-                                
-                                
-                                
+
                                 viewModel.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
                                     self.downloaded = true
                                     self.disableDownload = true

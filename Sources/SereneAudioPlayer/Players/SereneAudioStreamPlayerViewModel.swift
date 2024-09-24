@@ -140,6 +140,11 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
             self?.isPlaying = true
         }
         
+        player?.onPlay = { [weak self] in
+            self?.backgroundPlayerManager?.play()
+            self?.isPlaying = true
+        }
+        
         player?.onPause = { [weak self] in
             self?.backgroundPlayerManager?.pause()
             self?.isPlaying = false
@@ -163,8 +168,6 @@ extension SereneAudioStreamPlayerViewModel {
     var isPlayerDurationMoreThanZero: Bool { player?.itemDurationSubject.value ?? 0 > 0 }
     
     func playAction() {
-        player?.play()
-        
         if InternetConnectionManager.isConnectedToNetwork() {
             
             if isPlaying {

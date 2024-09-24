@@ -29,6 +29,9 @@ public struct SereneAudioStreamPlayer: View {
     @State var downloaded = false
     @State var disableDownload = false
     
+    @State var fadeTimer = Timer.publish(every: 2, on: .current, in: .common).autoconnect()
+    @State var fadeInOpacity: Double = 1
+    
     @State private var backgroundPlayerOpacity: Double = 0
     
     var likeButtonView: some View {
@@ -47,7 +50,6 @@ public struct SereneAudioStreamPlayer: View {
                     .font(.headline)
                     .padding()
             }
-            
         }
     }
     
@@ -107,9 +109,9 @@ public struct SereneAudioStreamPlayer: View {
                     .disabled(true)
                     
                     VideoPlayerView(player: $viewModel.noisePlayer, isAudioPlayed: $viewModel.isPlaying) { }
-                    .opacity(0)
-                    .ignoresSafeArea()
-                    .disabled(true)
+                        .opacity(0)
+                        .ignoresSafeArea()
+                        .disabled(true)
                 }
                 
                 // Gradient Overlay (Clear to Black)
@@ -193,7 +195,8 @@ public struct SereneAudioStreamPlayer: View {
                             backwardButtonView
                         }
                         
-                        playButtonView
+                        Spacer()
+                        
                         
                         if viewModel.type == .classCollection {
                             likeButtonView
@@ -209,7 +212,7 @@ public struct SereneAudioStreamPlayer: View {
                                 let urlString = viewModel.track.streamURL ?? ""
                                 
                                 let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-
+                                
                                 viewModel.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
                                     self.downloaded = true
                                     self.disableDownload = true
@@ -262,8 +265,15 @@ public struct SereneAudioStreamPlayer: View {
                         }
                         currentSelectedMenu = ""
                     }
-                    
                 }
+                .opacity(fadeInOpacity)
+            }
+            .overlay(alignment: .centerLastTextBaseline) {
+                playButtonView
+            }
+            .onTapGesture {
+                fadeInOpacity = 1
+                fadeTimer = Timer.publish(every: 2, on: .current, in: .common).autoconnect()
             }
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -281,6 +291,13 @@ public struct SereneAudioStreamPlayer: View {
                 }
             })
         }
+        .onReceive(fadeTimer) { _ in
+            if fadeInOpacity != 0 {
+                withAnimation {
+                    fadeInOpacity = 0
+                }
+            }
+        }
         .onChange(of: viewModel.isFinished) { isFinished in
             if isFinished {
                 dismiss()
@@ -289,6 +306,7 @@ public struct SereneAudioStreamPlayer: View {
         .onDisappear {
             viewModel.destroyAll()
         }
+        
     }
 }
 

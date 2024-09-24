@@ -82,6 +82,7 @@ final class Player {
     func playFromBeginning() {
         seekToBegin()
         play()
+        onPlay()
     }
     
     func backward() {
@@ -124,6 +125,7 @@ final class Player {
     
     func play() {
         self.avPlayer?.play()
+        self.onPlay()
     }
     
     func destroy() {
@@ -142,6 +144,7 @@ final class Player {
     
     func pause() {
         self.avPlayer?.pause()
+        self.onPause()
     }
     
     private func startItemObserver() {
@@ -149,6 +152,7 @@ final class Player {
             guard let self else { return }
             if !isOSMediaInfoActivated {
                 setupNowPlaying(track: track)
+                setupRemoteTransportControls()
                 isOSMediaInfoActivated = true
             }
             self.onStart()
@@ -214,20 +218,15 @@ final class Player {
 extension Player {
     func setupRemoteTransportControls() {
         // Add handler for Play Command
-        commandCenter.pauseCommand.addTarget(self, action: #selector(playHandler))
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            self?.pause()
+            return .success
+        }
         
-        // Add handler for Pause Command
-        commandCenter.pauseCommand.addTarget(self, action: #selector(pauseHandler))
-    }
-    
-    @objc private func playHandler() {
-        pause()
-        onPause()
-    }
-    
-    @objc private func pauseHandler() {
-        play()
-        onPlay()
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            self?.play()
+            return .success
+        }
     }
     
     func setupNowPlaying(track: Track) {

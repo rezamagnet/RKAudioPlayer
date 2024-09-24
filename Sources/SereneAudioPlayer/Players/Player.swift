@@ -250,9 +250,9 @@ extension Player {
             nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo
         }
         
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = itemDurationSubject.value
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = avPlayer?.currentTime().seconds
         
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Float(itemDurationSubject.value)
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Float(avPlayer?.currentItem?.duration.seconds ?? 0)
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = rate
         
         // Set the metadata

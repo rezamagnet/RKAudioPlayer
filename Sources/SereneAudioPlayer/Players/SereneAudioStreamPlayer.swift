@@ -29,7 +29,7 @@ public struct SereneAudioStreamPlayer: View {
     @State var downloaded = false
     @State var disableDownload = false
     
-    @State var fadeTimer = Timer.publish(every: 2, on: .current, in: .common).autoconnect()
+    @State var fadeTimer = Timer.publish(every: 3, on: .current, in: .common).autoconnect()
     @State var fadeInOpacity: Double = 1
     
     @State private var backgroundPlayerOpacity: Double = 0
@@ -56,6 +56,7 @@ public struct SereneAudioStreamPlayer: View {
     var playButtonView: some View {
         Button(action: {
             viewModel.playAction()
+            fadeInOpacity = 1
         }) {
             
             Image(systemName: viewModel.isPlaying && !viewModel.isFinished ? "pause.fill" : "play.fill")
@@ -273,7 +274,7 @@ public struct SereneAudioStreamPlayer: View {
             }
             .onTapGesture {
                 fadeInOpacity = 1
-                fadeTimer = Timer.publish(every: 2, on: .current, in: .common).autoconnect()
+                fadeTimer = Timer.publish(every: 3, on: .current, in: .common).autoconnect()
             }
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -292,7 +293,7 @@ public struct SereneAudioStreamPlayer: View {
             })
         }
         .onReceive(fadeTimer) { _ in
-            if fadeInOpacity != 0 {
+            if fadeInOpacity != 0 && viewModel.isPlaying {
                 withAnimation {
                     fadeInOpacity = 0
                 }

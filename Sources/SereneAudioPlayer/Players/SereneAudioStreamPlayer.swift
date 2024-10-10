@@ -152,7 +152,7 @@ public struct SereneAudioStreamPlayer: View {
                     
                     VStack(alignment: .leading) {
                         HStack {
-                            Text(viewModel.track.title ?? "No track title")
+                            Text(viewModel.displayTitle)
                                 .foregroundColor(.white)
                                 .font(.custom("Helvetica Neue", size: 32))
                                 .fontWeight(.bold)

@@ -31,12 +31,20 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
         durationFormatter.string(from: displayTime)!
     }
     
+    var displayTitle: String {
+        if player?.isUnguidedPart == true {
+            return "Unguided"
+        } else {
+            return track.title ?? ""
+        }
+    }
+    
     var displayItemDurationFormattedText: String {
         let unguidedSecond = track.unguidedSecond ?? 0
         if player?.isUnguidedPart == true {
-            return "+" + durationFormatter.string(from: unguidedSecond)!
+            return "+" + durationFormatter.string(from: itemDuration - displayTime - unguidedSecond + 1)!
         } else {
-            return "-" + durationFormatter.string(from: itemDuration - unguidedSecond)!
+            return "-" + durationFormatter.string(from: itemDuration - displayTime - unguidedSecond)!
         }
     }
     

@@ -17,13 +17,15 @@ public struct SereneAudioStreamPlayer: View {
     
     @Environment(\.dismiss) var dismiss
     @Environment(\.presentationMode) var presentationMode
+    private var isExploreMode: Bool
     
     @State var currentSelectedMenu = String()
     
     @ObservedObject public var viewModel: SereneAudioStreamPlayerViewModel
     
-    public init(viewModel: SereneAudioStreamPlayerViewModel) {
+    public init(viewModel: SereneAudioStreamPlayerViewModel, isExploreMode: Bool = false) {
         self.viewModel = viewModel
+        self.isExploreMode = isExploreMode
     }
 
     @State var downloaded = false
@@ -111,6 +113,74 @@ public struct SereneAudioStreamPlayer: View {
         dismiss()
     }
     
+    @ViewBuilder
+    func controlButtons() -> some View {
+        if !isExploreMode {
+            HStack(alignment: .center, spacing: 32) {
+                
+                airplayView
+                
+                
+                if viewModel.type == .classCollection {
+                    backwardButtonView
+                }
+                
+                Spacer()
+                
+                
+                if viewModel.type == .classCollection {
+                    likeButtonView
+                }
+                
+                switch viewModel.type {
+                case .music, .unguided, .intro, .classCollection:
+                    KebabMenuView(options: [
+                        KebabMenuModel(text: "Share", icon: .share)
+                    ], currentSelection: $currentSelectedMenu)
+                case .unknown:
+                    Button(action: {
+                        let urlString = viewModel.track.streamURL ?? ""
+                        
+                        let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+                        
+                        viewModel.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
+                            self.downloaded = true
+                            self.disableDownload = true
+                        }
+                    }) {
+                        
+                        if viewModel.isDownloading {
+                            ActivityIndicatorView(isVisible: $viewModel.isDownloading, type: .default)
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(.white)
+                                .padding()
+                        } else {
+                            if downloaded {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                                    .padding()
+                            } else {
+                                
+                                Image(systemName: "icloud.and.arrow.down.fill")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                                    .padding()
+                            }
+                        }
+                    }
+                    .disabled(disableDownload)
+                }
+            }
+        } else {
+            // Spacing for explore mode
+            HStack(alignment: .center, spacing: 32) {
+                Button("") { }
+                .padding()
+            }
+        }
+    }
+    
     public var body: some View {
         NavigationStack {
             ZStack {
@@ -158,8 +228,10 @@ public struct SereneAudioStreamPlayer: View {
                                 .fontWeight(.bold)
                                 .padding(.bottom, 8)
                                 .multilineTextAlignment(.leading)
-                            Spacer()
-                            skipButtonView
+                            if !isExploreMode, viewModel.isUnguidedPart {
+                                Spacer()
+                                skipButtonView
+                            }
                         }
                         
                         Text(viewModel.track.subtitle ?? "No track subtitle")
@@ -219,71 +291,14 @@ public struct SereneAudioStreamPlayer: View {
                     }
                     .padding(.bottom, 20)
                     
-                    HStack(alignment: .center, spacing: 32) {
-                        
-                        airplayView
-                        
-                        
-                        if viewModel.type == .classCollection {
-                            backwardButtonView
+                    controlButtons()
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal)
+                        .padding(.bottom, 30)
+                        .onAppear {
+                            viewModel.appearAction()
                         }
-                        
-                        Spacer()
-                        
-                        
-                        if viewModel.type == .classCollection {
-                            likeButtonView
-                        }
-                        
-                        switch viewModel.type {
-                        case .music, .unguided, .intro, .classCollection:
-                            KebabMenuView(options: [
-                                KebabMenuModel(text: "Share", icon: .share)
-                            ], currentSelection: $currentSelectedMenu)
-                        case .unknown:
-                            Button(action: {
-                                let urlString = viewModel.track.streamURL ?? ""
-                                
-                                let encodedSoundString = urlString.removingPercentEncoding?.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-                                
-                                viewModel.downloadAndSaveAudioFile(encodedSoundString!) { (url) in
-                                    self.downloaded = true
-                                    self.disableDownload = true
-                                }
-                            }) {
-                                
-                                if viewModel.isDownloading {
-                                    ActivityIndicatorView(isVisible: $viewModel.isDownloading, type: .default)
-                                        .frame(width: 30, height: 30)
-                                        .foregroundColor(.white)
-                                        .padding()
-                                } else {
-                                    if downloaded {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.white)
-                                            .font(.headline)
-                                            .padding()
-                                    } else {
-                                        
-                                        Image(systemName: "icloud.and.arrow.down.fill")
-                                            .foregroundColor(.white)
-                                            .font(.headline)
-                                            .padding()
-                                    }
-                                }
-                                
-                                
-                            }
-                            .disabled(disableDownload)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal)
-                    .padding(.bottom, 30)
-                    .onAppear {
-                        viewModel.appearAction()
-                    }
-                    .alert(isPresented: $viewModel.showingAlert) {
+                        .alert(isPresented: $viewModel.showingAlert) {
                         Alert(title: Text("No Internet Connection"), message: Text("Please ensure your device is connected to the internet."), dismissButton: .default(Text("Got it!")))
                         
                     }
@@ -323,7 +338,7 @@ public struct SereneAudioStreamPlayer: View {
             })
         }
         .onReceive(fadeTimer) { _ in
-            if fadeInOpacity != 0 && viewModel.isPlaying {
+            if fadeInOpacity != 0 && viewModel.isPlaying && !isExploreMode {
                 withAnimation {
                     fadeInOpacity = 0
                 }

@@ -14,15 +14,17 @@ struct SliderView: View {
     @State private var lastCoordinateValue: CGFloat = 0.0
     private var sliderRange: ClosedRange<Double>
     private var onEditingChanged: (Bool) -> Void
-    
+    private var unguidedSecond: TimeInterval = 0
     
     init(
         value: Binding<Double>,
         in range: ClosedRange<Double> = 1...100,
+        unguidedSecond: TimeInterval = 0,
         onEditingChanged: @escaping (Bool) -> Void
     ) {
         self._value = value
         self.sliderRange = range
+        self.unguidedSecond = unguidedSecond
         self.onEditingChanged = onEditingChanged
     }
     
@@ -40,10 +42,10 @@ struct SliderView: View {
             let scaleFactor = (maxValue - minValue) / (sliderRange.upperBound - sliderRange.lowerBound)
             let lower = sliderRange.lowerBound
             let sliderVal = (self.value - lower) * scaleFactor + minValue
+            let unguidedPart = proxy.size.width -  (CGFloat(unguidedSecond / sliderRange.upperBound) * proxy.size.width)
             
             ZStack {
                 Group {
-                    
                     RoundedRectangle(cornerRadius: radius)
                         .foregroundColor(.gray.opacity(0.3))
                         .frame(height: Constants.height)
@@ -60,6 +62,16 @@ struct SliderView: View {
                             )
                             .frame(width: sliderVal, height: Constants.height)
                         Spacer()
+                    }
+                    
+                    GeometryReader { proxy in
+                        Rectangle()
+                            .frame(width: Constants.height, height: Constants.height)
+                            .foregroundStyle(.black.opacity(0.3))
+                            .offset(
+                                x: unguidedPart,
+                                y: proxy.frame(in: .local).maxY/2 - Constants.height/2
+                            )
                     }
                 }
                 

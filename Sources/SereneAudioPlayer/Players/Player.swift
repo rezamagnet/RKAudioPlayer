@@ -96,6 +96,13 @@ final class Player {
         return (displayTimeSubject.value / itemDurationSubject.value) * 100
     }
     
+    var isUnguidedPart: Bool {
+        guard let unguidedSecond = track.unguidedSecond else {
+            return false
+        }
+        return displayTimeSubject.value >= itemDurationSubject.value - unguidedSecond
+    }
+    
     /// Time observer.
     fileprivate var periodicTimeObserver: Any?
     

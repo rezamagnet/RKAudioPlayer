@@ -68,6 +68,22 @@ public struct SereneAudioStreamPlayer: View {
         }
     }
     
+    var skipButtonView: some View {
+        Button(action: {
+            dismissPlayer()
+        }) {
+            HStack {
+                Text("Skip")
+                Image(.skip)
+            }
+            .font(.custom("Helvetica Neue", size: 16))
+            .foregroundColor(.white)
+            .frame(width: 83, height: 35)
+            .background(.white.opacity(0.3))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+    }
+    
     var backwardButtonView: some View {
         Button(action: {
             viewModel.rewindAction()
@@ -87,6 +103,12 @@ public struct SereneAudioStreamPlayer: View {
                 .foregroundColor(.white)
                 .font(.headline)
         }
+    }
+    
+    private func dismissPlayer() {
+        viewModel.destroyAll()
+        viewModel.dismissAction()
+        dismiss()
     }
     
     public var body: some View {
@@ -129,12 +151,16 @@ public struct SereneAudioStreamPlayer: View {
                     Spacer()
                     
                     VStack(alignment: .leading) {
-                        Text(viewModel.track.title ?? "No track title")
-                            .foregroundColor(.white)
-                            .font(.custom("Helvetica Neue", size: 32))
-                            .fontWeight(.bold)
-                            .padding(.bottom, 8)
-                            .multilineTextAlignment(.leading)
+                        HStack {
+                            Text(viewModel.track.title ?? "No track title")
+                                .foregroundColor(.white)
+                                .font(.custom("Helvetica Neue", size: 32))
+                                .fontWeight(.bold)
+                                .padding(.bottom, 8)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                            skipButtonView
+                        }
                         
                         Text(viewModel.track.subtitle ?? "No track subtitle")
                             .foregroundColor(.white)
@@ -153,7 +179,11 @@ public struct SereneAudioStreamPlayer: View {
                             } else {
                                 Group {
                                     if viewModel.isPlayerDurationMoreThanZero {
-                                        SliderView(value: $viewModel.displayTime, in: 0...viewModel.itemDuration) { isScrubStarted in
+                                        SliderView(
+                                            value: $viewModel.displayTime,
+                                            in: 0...viewModel.itemDuration,
+                                            unguidedSecond: viewModel.track.unguidedSecond ?? 0
+                                        ) { isScrubStarted in
                                             if isScrubStarted {
                                                 viewModel.updateScrub(.scrubStarted)
                                                 
@@ -168,6 +198,7 @@ public struct SereneAudioStreamPlayer: View {
                                             .frame(height: 10)
                                     }
                                 }
+                                .offset(y: -4)
                                 .foregroundStyle(Color.accentColor)
                             }
                         }
@@ -178,6 +209,7 @@ public struct SereneAudioStreamPlayer: View {
                                 Spacer()
                                 if viewModel.isPlayerDurationMoreThanZero {
                                     Text(viewModel.displayItemDurationFormattedText)
+                                        .foregroundStyle(viewModel.isUnguidedPart ? .green : .white)
                                 }
                             }
                             .foregroundStyle(.white)
@@ -279,9 +311,7 @@ public struct SereneAudioStreamPlayer: View {
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        viewModel.destroyAll()
-                        viewModel.dismissAction()
-                        dismiss()
+                        dismissPlayer()
                     } label: {
                         Image(systemName: "multiply")
                             .foregroundColor(.white)

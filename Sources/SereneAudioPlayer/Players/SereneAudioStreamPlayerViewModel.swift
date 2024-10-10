@@ -17,6 +17,7 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
     @Published var showingAlert = false
     @Published var isDownloading = false
     @Published var isSeen = false
+    @Published var isUnguidedPart: Bool = false
     @Published var trackFavorited: Bool = false
     /// Display time that will be bound to the scrub slider.
     @Published var displayTime: TimeInterval = 0
@@ -31,7 +32,12 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
     }
     
     var displayItemDurationFormattedText: String {
-        durationFormatter.string(from: itemDuration)!
+        let unguidedSecond = track.unguidedSecond ?? 0
+        if player?.isUnguidedPart == true {
+            return "+" + durationFormatter.string(from: unguidedSecond)!
+        } else {
+            return "-" + durationFormatter.string(from: itemDuration - unguidedSecond)!
+        }
     }
     
     private var likeAction: () -> Bool
@@ -152,6 +158,7 @@ public final class SereneAudioStreamPlayerViewModel: ObservableObject {
         
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
+            self.isUnguidedPart = self.player?.isUnguidedPart ?? false
             if isPlaying {
                 if player?.getPercentComplete ?? 0 > 75 {
                     isSeen = true

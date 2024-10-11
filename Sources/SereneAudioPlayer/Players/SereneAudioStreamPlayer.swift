@@ -181,6 +181,11 @@ public struct SereneAudioStreamPlayer: View {
         }
     }
     
+    func startFadeAnimation() {
+        fadeInOpacity = 1
+        fadeTimer = Timer.publish(every: 3, on: .current, in: .common).autoconnect()
+    }
+    
     public var body: some View {
         NavigationStack {
             ZStack {
@@ -258,9 +263,11 @@ public struct SereneAudioStreamPlayer: View {
                                         ) { isScrubStarted in
                                             if isScrubStarted {
                                                 viewModel.updateScrub(.scrubStarted)
+                                                fadeInOpacity = 1
                                                 
                                             } else {
                                                 viewModel.updateScrub(.scrubEnded(viewModel.displayTime))
+                                                startFadeAnimation()
                                                 
                                             }
                                         }
@@ -320,8 +327,7 @@ public struct SereneAudioStreamPlayer: View {
                 playButtonView
             }
             .onTapGesture {
-                fadeInOpacity = 1
-                fadeTimer = Timer.publish(every: 3, on: .current, in: .common).autoconnect()
+                startFadeAnimation()
             }
             .toolbar(content: {
                 ToolbarItem(placement: .topBarTrailing) {
